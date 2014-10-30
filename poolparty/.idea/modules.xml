@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/poolparty.iml" filepath="$PROJECT_DIR$/poolparty.iml" />
+      <module fileurl="file://$PROJECT_DIR$/thesaurus-link-extractor.iml" filepath="$PROJECT_DIR$/thesaurus-link-extractor.iml" />
     </modules>
   </component>
 </project>

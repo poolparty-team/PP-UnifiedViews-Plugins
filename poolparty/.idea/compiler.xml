@@ -24,11 +24,11 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="true" />
-        <module name="poolparty" />
+        <module name="thesaurus-link-extractor" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
-      <module name="poolparty" target="1.7" />
+      <module name="thesaurus-link-extractor" target="1.7" />
     </bytecodeTargetLevel>
   </component>
 </project>
