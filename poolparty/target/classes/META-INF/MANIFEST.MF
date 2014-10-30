@@ -1,0 +1,56 @@
+Manifest-Version: 1.0
+Bnd-LastModified: 1414677450705
+Build-Jdk: 1.7.0_45
+Build-Time: 20141030-1457
+Built-By: christian
+Bundle-ClassPath: .,dependency/org.codehaus.jackson/jackson-mapper-asl-1
+ .7.5.jar,dependency/org.codehaus.jackson/jackson-core-asl-1.7.5.jar,dep
+ endency/joda-time/joda-time-2.5.jar,dependency/org.joda/joda-convert-1.
+ 2.jar,dependency/commons-codec/commons-codec-1.9.jar
+Bundle-Description: Fetches all links from thesaurus concepts to externa
+ l linked data sources.
+Bundle-License: https://www.gnu.org/licenses/lgpl-3.0.txt
+Bundle-ManifestVersion: 2
+Bundle-Name: PoolParty Thesaurus Links
+Bundle-SymbolicName: eu.unifiedviews.plugins.swc.poolparty
+Bundle-Version: 1.0.0.SNAPSHOT
+Created-By: Apache Maven Bundle Plugin
+DPU-MainClass: ThesaurusLinkExtractor
+DPU-Package: eu.unifiedviews.plugins.swc.poolparty.extract
+Embed-Dependency: *;scope=compile|runtime
+Embed-Directory: dependency
+Embed-StripGroup: false
+Embed-Transitive: false
+Embedded-Artifacts: dependency/org.codehaus.jackson/jackson-mapper-asl-1
+ .7.5.jar;g="org.codehaus.jackson";a="jackson-mapper-asl";v="1.7.5",depe
+ ndency/org.codehaus.jackson/jackson-core-asl-1.7.5.jar;g="org.codehaus.
+ jackson";a="jackson-core-asl";v="1.7.5",dependency/joda-time/joda-time-
+ 2.5.jar;g="joda-time";a="joda-time";v="2.5",dependency/org.joda/joda-co
+ nvert-1.2.jar;g="org.joda";a="joda-convert";v="1.2",dependency/commons-
+ codec/commons-codec-1.9.jar;g="commons-codec";a="commons-codec";v="1.9"
+Export-Package: eu.unifiedviews.plugins.swc.poolparty;uses:="eu.unifiedv
+ iews.plugins.swc.poolparty.api,com.vaadin.data,com.vaadin.ui,com.vaadin
+ .event,eu.unifiedviews.plugins.swc.poolparty.api.json.model,javax.manag
+ ement,org.slf4j,com.vaadin.data.util";version="1.0.0.SNAPSHOT",eu.unifi
+ edviews.plugins.swc.poolparty.api;uses:="org.openrdf.model.impl,org.ope
+ nrdf.rio,org.openrdf.repository,org.openrdf.rio.helpers,org.openrdf.mod
+ el,javax.management,org.slf4j,eu.unifiedviews.plugins.swc.poolparty.api
+ .json.model";version="1.0.0.SNAPSHOT",eu.unifiedviews.plugins.swc.poolp
+ arty.api.json.model;version="1.0.0.SNAPSHOT",eu.unifiedviews.plugins.sw
+ c.poolparty.extract;uses:="eu.unifiedviews.plugins.swc.poolparty,com.va
+ adin.data.util,eu.unifiedviews.dpu.config,org.slf4j,eu.unifiedviews.plu
+ gins.swc.poolparty.api,com.vaadin.data,eu.unifiedviews.helpers.dpu.conf
+ ig,com.vaadin.ui,org.openrdf.rio,eu.unifiedviews.dpu,eu.unifiedviews.da
+ taunit.rdf,org.openrdf.repository,eu.unifiedviews.dataunit,org.openrdf.
+ model";version="1.0.0.SNAPSHOT"
+Import-Package: com.vaadin.data;version="[7.1,8)",com.vaadin.data.util;v
+ ersion="[7.1,8)",com.vaadin.event;version="[7.1,8)",com.vaadin.ui;versi
+ on="[7.1,8)",eu.unifiedviews.dataunit;version="[1.0,2)",eu.unifiedviews
+ .dataunit.rdf;version="[1.0,2)",eu.unifiedviews.dpu;version="[1.0,2)",e
+ u.unifiedviews.dpu.config;version="[1.0,2)",eu.unifiedviews.helpers.dpu
+ .config;version="[1.0,2)",javax.management,javax.xml.datatype,javax.xml
+ .namespace,javax.xml.parsers,org.openrdf.model,org.openrdf.model.impl,o
+ rg.openrdf.repository,org.openrdf.rio,org.openrdf.rio.helpers,org.slf4j
+ ;version="[1.7,2)",org.w3c.dom,org.w3c.dom.bootstrap,org.w3c.dom.ls,org
+ .xml.sax
+Tool: Bnd-1.50.0
