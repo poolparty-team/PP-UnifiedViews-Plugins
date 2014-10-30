@@ -125,15 +125,15 @@ public class PoolPartyApiPanel extends VerticalLayout {
         projectId.validate();
         PoolPartyApiConfig config = new PoolPartyApiConfig();
         config.setAuthentication(getAuthentication());
-        config.setProjectId((String) projectId.getValue());
-        config.setUriSupplement((String) supplement.getValue());
-        config.setServer((String) server.getValue());
+        config.setProjectId(projectId.getValue());
+        config.setUriSupplement(supplement.getValue());
+        config.setServer(server.getValue());
         return config;
     }
 
     private Authentication getAuthentication() {
         if (auth.getValue() == AuthType.Basic_Auth) {
-            return new BasicAuthentication((String) username.getValue(), (String) password.getValue());
+            return new BasicAuthentication(username.getValue(), password.getValue());
         } else {
             return new NoAuthentication();
         }

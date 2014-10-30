@@ -8,6 +8,7 @@ import eu.unifiedviews.dpu.DPUException;
 import eu.unifiedviews.helpers.dpu.config.AbstractConfigDialog;
 import eu.unifiedviews.helpers.dpu.config.ConfigDialogProvider;
 import eu.unifiedviews.helpers.dpu.config.ConfigurableBase;
+import eu.unifiedviews.plugins.swc.poolparty.PoolPartyApiConfig;
 import eu.unifiedviews.plugins.swc.poolparty.api.PPTApi;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.rio.RDFFormat;
@@ -22,11 +23,9 @@ import java.net.URLEncoder;
 public class ThesaurusLinkExtractor extends ConfigurableBase<ThesaurusLinkConfig> implements ConfigDialogProvider<ThesaurusLinkConfig> {
 
     private final Logger logger = LoggerFactory.getLogger(ThesaurusLinkExtractor.class);
-    private final static String query = "CONSTRUCT {}";
 
     @DataUnit.AsOutput(name = "output")
-    public WritableRDFDataUnit rdfData;
-
+    public WritableRDFDataUnit rdfOutput;
 
     public ThesaurusLinkExtractor() {
         super(ThesaurusLinkConfig.class);
@@ -35,20 +34,31 @@ public class ThesaurusLinkExtractor extends ConfigurableBase<ThesaurusLinkConfig
     @Override
     public void execute(DPUContext dpuContext) throws DPUException, InterruptedException {
         try {
-            StringBuilder queryBuilder = new StringBuilder();
-            queryBuilder.append("PREFIX skos:<http://www.w3.org/2004/02/skos/core#> CONSTRUCT {?concept <").append(config.getLinkProperty()).append("> ?link } WHERE { ?concept a skos:Concept. ");
-            queryBuilder.append("?concept <").append(config.getLinkProperty()).append("> ?link. }");
-            logger.info(queryBuilder.toString());
-            URL url = PPTApi.getServiceUrl(config.getApiConfig().getServer(), "PoolParty/sparql/" + config.getApiConfig().getUriSupplement() + "?format=application/rdf%2Bxml&query=" + URLEncoder.encode(queryBuilder.toString(), "UTF-8"));
-            URLConnection connection = url.openConnection();
-            config.getApiConfig().getAuthentication().visit(connection);
+            PoolPartyApiConfig poolPartyApiConfig = config.getApiConfig();
+            String extractionQuery = createExtractionQuery(config.getLinkProperty());
+            logger.debug(extractionQuery);
 
-            RepositoryConnection repCon = rdfData.getConnection();
-            repCon.add(connection.getInputStream(), "", RDFFormat.RDFXML);
+            URL url = PPTApi.getServiceUrl(poolPartyApiConfig.getServer(),
+                    "PoolParty/sparql/" + poolPartyApiConfig.getUriSupplement() +
+                    "?format=application/rdf%2Bxml&query=" + URLEncoder.encode(extractionQuery, "UTF-8"));
+
+            URLConnection pptConnection = url.openConnection();
+            poolPartyApiConfig.getAuthentication().visit(pptConnection);
+
+            RepositoryConnection rdfOutputConnection = rdfOutput.getConnection();
+            rdfOutputConnection.add(pptConnection.getInputStream(), "", RDFFormat.RDFXML);
         }
         catch (Exception e) {
             throw new DPUException(e);
         }
+    }
+
+    private String createExtractionQuery(String linkProperty) {
+        StringBuilder queryBuilder = new StringBuilder();
+        queryBuilder.append("PREFIX skos:<http://www.w3.org/2004/02/skos/core#>")
+            .append("CONSTRUCT {?concept <").append(linkProperty).append("> ?link } WHERE { ?concept a skos:Concept. ")
+            .append("?concept <").append(linkProperty).append("> ?link. }");
+        return queryBuilder.toString();
     }
 
     @Override
