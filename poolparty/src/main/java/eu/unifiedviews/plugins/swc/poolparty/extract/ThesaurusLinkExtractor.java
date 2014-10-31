@@ -17,6 +17,7 @@ import org.openrdf.rio.RDFFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.URLEncoder;
@@ -38,14 +39,8 @@ public class ThesaurusLinkExtractor extends ConfigurableBase<ThesaurusLinkConfig
     @Override
     public void execute(DPUContext dpuContext) throws DPUException, InterruptedException {
         try {
-            String extractionQuery = createExtractionQuery(config.getLinkProperty());
             PoolPartyApiConfig poolPartyApiConfig = config.getApiConfig();
-            URL url = PptApiConnector.getServiceUrl(poolPartyApiConfig.getServer(),
-                    "PoolParty/sparql/" + poolPartyApiConfig.getUriSupplement() +
-                            "?format=application/rdf%2Bxml&query=" + URLEncoder.encode(extractionQuery, "UTF-8"));
-            logger.debug(extractionQuery);
-
-            URLConnection pptConnection = url.openConnection();
+            URLConnection pptConnection = establishPptConnection(poolPartyApiConfig);
             poolPartyApiConfig.getAuthentication().visit(pptConnection);
 
             establishDataUnitConnection();
@@ -59,6 +54,15 @@ public class ThesaurusLinkExtractor extends ConfigurableBase<ThesaurusLinkConfig
         }
     }
 
+    public URLConnection establishPptConnection(PoolPartyApiConfig poolPartyApiConfig) throws IOException
+    {
+        String extractionQuery = createExtractionQuery(config.getLinkProperty());
+        URL url = PptApiConnector.getServiceUrl(poolPartyApiConfig.getServer(),
+                "PoolParty/sparql/" + poolPartyApiConfig.getUriSupplement() +
+                        "?format=application/rdf%2Bxml&query=" + URLEncoder.encode(extractionQuery, "UTF-8"));
+        return url.openConnection();
+    }
+
     private void establishDataUnitConnection() {
         try {
             dataUnitConnection = rdfOutput.getConnection();
@@ -70,7 +74,7 @@ public class ThesaurusLinkExtractor extends ConfigurableBase<ThesaurusLinkConfig
 
     private void closeDataUnitConnection() {
         try {
-            dataUnitConnection.close();
+            if (dataUnitConnection != null) dataUnitConnection.close();
         }
         catch (RepositoryException e) {
             logger.error("Error closing connection to data unit");

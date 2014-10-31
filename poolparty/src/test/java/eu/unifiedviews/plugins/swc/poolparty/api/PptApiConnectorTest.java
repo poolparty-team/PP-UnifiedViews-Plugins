@@ -1,8 +1,5 @@
-package eu.unifiedviews.plugins.swc.poolparty;
+package eu.unifiedviews.plugins.swc.poolparty.api;
 
-import eu.unifiedviews.plugins.swc.poolparty.api.AuthenticationFailedException;
-import eu.unifiedviews.plugins.swc.poolparty.api.BasicAuthentication;
-import eu.unifiedviews.plugins.swc.poolparty.api.PptApiConnector;
 import org.junit.Assert;
 import org.junit.Test;
 
