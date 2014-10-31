@@ -16,6 +16,7 @@ public class Project {
     private List<String> availableLanguages = new ArrayList<String>();
     private String defaultLanguage;
     private String description = "";
+    private String uriSupplement = "";
 
     public Project() {
     }
@@ -78,5 +79,13 @@ public class Project {
 
     public void setTitle(String title) {
         this.title = title;
+    }
+
+    public String getUriSupplement() {
+        return uriSupplement;
+    }
+
+    public void setUriSupplement(String uriSupplement) {
+        this.uriSupplement = uriSupplement;
     }
 }

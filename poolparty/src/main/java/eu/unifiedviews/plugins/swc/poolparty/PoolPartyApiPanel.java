@@ -4,6 +4,7 @@ import com.vaadin.data.Property;
 import com.vaadin.data.util.BeanItemContainer;
 import com.vaadin.event.ItemClickEvent;
 import com.vaadin.ui.*;
+import eu.unifiedviews.dpu.config.DPUConfigException;
 import eu.unifiedviews.plugins.swc.poolparty.api.*;
 import eu.unifiedviews.plugins.swc.poolparty.api.json.model.Project;
 import org.slf4j.Logger;
@@ -25,15 +26,11 @@ public class PoolPartyApiPanel extends VerticalLayout {
     private final TextField username = new TextField("Username");
     private final PasswordField password = new PasswordField("Password");
 
-    public PoolPartyApiPanel(PoolPartyApiConfig config) {
-        if (config == null) {
-            config = new PoolPartyApiConfig();
-        }
+    public PoolPartyApiPanel() {
         server.setInputPrompt("http://vocabulary.company.com");
         server.setWidth("300px");
         server.setRequired(true);
         server.setRequiredError("PoolParty server URL is required");
-        server.setValue(config.getServer());
         addComponent(server);
 
         auth.addItem(AuthType.None);
@@ -55,7 +52,6 @@ public class PoolPartyApiPanel extends VerticalLayout {
         auth.setImmediate(true);
         auth.setNullSelectionAllowed(false);
         auth.setItemCaptionMode(Select.ITEM_CAPTION_MODE_ID);
-        auth.select(config.getAuthentication().getType());
         addComponent(auth);
         username.setRequired(false);
         username.setImmediate(true);
@@ -63,20 +59,14 @@ public class PoolPartyApiPanel extends VerticalLayout {
         password.setRequired(false);
         password.setImmediate(true);
         addComponent(password);
-        if (config.getAuthentication() instanceof UsernamePasswordCredentials) {
-            username.setValue(((UsernamePasswordCredentials) config.getAuthentication()).getUsername());
-            password.setValue(((UsernamePasswordCredentials) config.getAuthentication()).getPassword());
-        }
 
         projectId.setWidth("300px");
         projectId.setRequired(true);
         projectId.setRequiredError("Project UUID is required");
-        projectId.setValue(config.getProjectId());
-        
+
         supplement.setWidth("300px");
         supplement.setRequired(true);
         supplement.setRequiredError("URI Supplement is required");
-        supplement.setValue(config.getUriSupplement());
 
         final Table table = new Table("Select one of the projects below to copy the project ID");
         table.setContainerDataSource(new BeanItemContainer<Project>(Project.class));
@@ -95,8 +85,8 @@ public class PoolPartyApiPanel extends VerticalLayout {
         Button fetchProjects = new Button("Fetch Projects", new Button.ClickListener() {
             @Override
             public void buttonClick(Button.ClickEvent event) {
-                String serverUrl = (String) server.getValue();
-                PPTApi api = new PPTApi(serverUrl, getAuthentication());
+                String serverUrl = server.getValue();
+                PptApiConnector api = new PptApiConnector(serverUrl, getAuthentication());
                 try {
                     table.getContainerDataSource().removeAllItems();
                     for (Project p : api.getProjects()) {
@@ -106,7 +96,7 @@ public class PoolPartyApiPanel extends VerticalLayout {
                     Notification.show("Access to PPT API denied - please check your authentication credentials.", Notification.TYPE_ERROR_MESSAGE);
                     logger.error("Unable to fetch projects from server: " + serverUrl, ex);
                 } catch (ServiceNotFoundException ex) {
-                    Notification.show("PPT API is not available: "+PPTApi.getServiceUrl(serverUrl, "api"), Notification.TYPE_ERROR_MESSAGE);
+                    Notification.show("PPT API is not available: "+ PptApiConnector.getServiceUrl(serverUrl, "api"), Notification.TYPE_ERROR_MESSAGE);
                     logger.error("Unable to fetch projects from server: " + serverUrl, ex);
                 } catch (Exception ex) {
                     Notification.show("Unable to fetch projects from server: " + serverUrl, "please fill out the project ID manually", Notification.TYPE_ERROR_MESSAGE);
@@ -120,9 +110,22 @@ public class PoolPartyApiPanel extends VerticalLayout {
         addComponent(supplement);
     }
 
-    public PoolPartyApiConfig getApiConfig() {
-        server.validate();
-        projectId.validate();
+    public void setFromApiConfig(PoolPartyApiConfig config) {
+        server.setValue(config.getServer());
+        auth.select(config.getAuthentication().getType());
+        if (config.getAuthentication() instanceof UsernamePasswordCredentials) {
+            username.setValue(((UsernamePasswordCredentials) config.getAuthentication()).getUsername());
+            password.setValue(((UsernamePasswordCredentials) config.getAuthentication()).getPassword());
+        }
+        projectId.setValue(config.getProjectId());
+        supplement.setValue(config.getUriSupplement());
+    }
+
+    public PoolPartyApiConfig getApiConfig() throws DPUConfigException {
+        if (!server.isValid() || !projectId.isValid()) {
+            throw new DPUConfigException("All values must be filled.");
+        }
+
         PoolPartyApiConfig config = new PoolPartyApiConfig();
         config.setAuthentication(getAuthentication());
         config.setProjectId(projectId.getValue());

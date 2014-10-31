@@ -46,4 +46,9 @@ public class PoolPartyApiConfig {
     public void setUriSupplement(String uriSupplement) {
         this.uriSupplement = uriSupplement;
     }
+
+    @Override
+    public String toString() {
+        return "server: " +server+ ", projectId: " +projectId+ ", uriSupplement: " +uriSupplement+ ", auth: "+authentication.getType().getLabel();
+    }
 }

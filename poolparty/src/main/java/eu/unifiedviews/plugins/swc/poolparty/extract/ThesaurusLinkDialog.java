@@ -2,28 +2,21 @@ package eu.unifiedviews.plugins.swc.poolparty.extract;
 
 import com.vaadin.data.util.BeanItemContainer;
 import com.vaadin.ui.ComboBox;
-import com.vaadin.ui.Notification;
 import com.vaadin.ui.VerticalLayout;
 import eu.unifiedviews.dpu.config.DPUConfigException;
 import eu.unifiedviews.helpers.dpu.config.BaseConfigDialog;
 import eu.unifiedviews.plugins.swc.poolparty.PoolPartyApiConfig;
 import eu.unifiedviews.plugins.swc.poolparty.PoolPartyApiPanel;
-import eu.unifiedviews.plugins.swc.poolparty.api.Authentication;
-import eu.unifiedviews.plugins.swc.poolparty.api.PPTApi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.net.URLEncoder;
 import java.util.Arrays;
 
 public class ThesaurusLinkDialog extends BaseConfigDialog<ThesaurusLinkConfig> {
 
     private final Logger logger = LoggerFactory.getLogger(ThesaurusLinkDialog.class);
     private final ComboBox linkProperty = new ComboBox("Linking Property");
-    private PoolPartyApiPanel apiPanel;
+    private PoolPartyApiPanel apiPanel = new PoolPartyApiPanel();
 
     public class LinkingProperty {
 
@@ -62,8 +55,6 @@ public class ThesaurusLinkDialog extends BaseConfigDialog<ThesaurusLinkConfig> {
         setHeight("100%");
 
         VerticalLayout mainLayout = new VerticalLayout();
-
-        apiPanel = new PoolPartyApiPanel(new PoolPartyApiConfig());
         mainLayout.addComponent(apiPanel);
         
         LinkingProperty exactMatch = new LinkingProperty("http://www.w3.org/2004/02/skos/core#exactMatch", "skos:exactMatch");
@@ -72,7 +63,7 @@ public class ThesaurusLinkDialog extends BaseConfigDialog<ThesaurusLinkConfig> {
                 new LinkingProperty("http://www.w3.org/2004/02/skos/core#closeMatch", "skos:closeMatch"),
                 new LinkingProperty("http://www.w3.org/2004/02/skos/core#relatedMatch", "skos:relatedMatch"),
                 new LinkingProperty("http://www.w3.org/2004/02/skos/core#broadMatch", "skos:broadMatch"),
-                new LinkingProperty("http://www.w3.org/2004/02/skos/core#narrowerMatch", "skos:narrowerMatch"),
+                new LinkingProperty("http://www.w3.org/2004/02/skos/core#narrowMatch", "skos:narrowMatch"),
                 new LinkingProperty("http://www.w3.org/2002/07/owl#sameAs", "owl:sameAs"),
                 new LinkingProperty("http://www.w3.org/2000/01/rdf-schema#seeAlso", "rdfs:seeAlso"))));
         linkProperty.setNullSelectionAllowed(false);
@@ -86,23 +77,29 @@ public class ThesaurusLinkDialog extends BaseConfigDialog<ThesaurusLinkConfig> {
 
     @Override
     protected void setConfiguration(ThesaurusLinkConfig config) throws DPUConfigException {
-        apiPanel = new PoolPartyApiPanel(config.getApiConfig());
+        logger.debug("setting configuration: " +config.toString());
+
+        apiPanel.setFromApiConfig(config.getApiConfig());
 
         for (Object p : linkProperty.getItemIds()) {
             if (((LinkingProperty) p).getUri().equals(config.getLinkProperty())) {
                 linkProperty.setValue(p);
             }
         }
-
     }
 
     @Override
     protected ThesaurusLinkConfig getConfiguration() throws DPUConfigException {
         ThesaurusLinkConfig thesaurusLinkConfig = new ThesaurusLinkConfig();
+        PoolPartyApiConfig apiConfig = apiPanel.getApiConfig();
+        thesaurusLinkConfig.setApiConfig(apiConfig);
+        thesaurusLinkConfig.setLinkProperty(((LinkingProperty) linkProperty.getValue()).getUri());
+        logger.debug("providing configuration: " +thesaurusLinkConfig.toString());
+        return thesaurusLinkConfig;
 
+        /*
         try {
-            PoolPartyApiConfig apiConfig = apiPanel.getApiConfig();
-            URL url = PPTApi.getServiceUrl(apiConfig.getServer(), "PoolParty/sparql/" + apiConfig.getUriSupplement() + "?query=" + URLEncoder.encode("ASK {?x a <http://www.w3.org/2004/02/skos/core#Concept> }", "UTF-8"));
+            URL url = PptApiConnector.getServiceUrl(apiConfig.getServer(), "PoolParty/sparql/" + apiConfig.getUriSupplement() + "?query=" + URLEncoder.encode("ASK {?x a <http://www.w3.org/2004/02/skos/core#Concept> }", "UTF-8"));
             logger.info(url.toString());
             Authentication authentication = apiConfig.getAuthentication();
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
@@ -112,11 +109,10 @@ public class ThesaurusLinkDialog extends BaseConfigDialog<ThesaurusLinkConfig> {
                 throw new RuntimeException("Response code: "+con.getResponseCode());
             }
 
-            thesaurusLinkConfig.setApiConfig(apiConfig);
-            thesaurusLinkConfig.setLinkProperty(((LinkingProperty) linkProperty.getValue()).getUri());
+
         } catch (IOException ex) {
             logger.error("Unable to query SPARQL endpoint of project", ex);
         }
-        return thesaurusLinkConfig;
+        */
     }
 }

@@ -9,7 +9,7 @@ import eu.unifiedviews.plugins.swc.poolparty.PoolPartyApiConfig;
  */
 public class ThesaurusLinkConfig {
 
-    private PoolPartyApiConfig apiConfig;
+    private PoolPartyApiConfig apiConfig = new PoolPartyApiConfig();
     private String linkProperty = "http://www.w3.org/2004/02/skos/core#exactMatch";
 
     public PoolPartyApiConfig getApiConfig() {
@@ -26,5 +26,10 @@ public class ThesaurusLinkConfig {
 
     public void setLinkProperty(String linkProperty) {
         this.linkProperty = linkProperty;
+    }
+
+    @Override
+    public String toString() {
+        return "apiconfig: " +apiConfig.toString()+ ", linkProperty: " +linkProperty;
     }
 }

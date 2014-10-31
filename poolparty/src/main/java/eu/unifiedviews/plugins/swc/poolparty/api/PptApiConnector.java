@@ -30,20 +30,20 @@ import java.util.List;
  *
  * @author kreisera
  */
-public class PPTApi {
+public class PptApiConnector {
 
-    private final static Logger logger = LoggerFactory.getLogger(PPTApi.class);
+    private final static Logger logger = LoggerFactory.getLogger(PptApiConnector.class);
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final String host;
     private final Authentication authentication;
 
-    public PPTApi(String host, Authentication authentication) {
+    public PptApiConnector(String host, Authentication authentication) {
         this.host = host;
         this.authentication = authentication;
     }
 
-    public List<Project> getProjects() throws AuthenticationFailedException, ServiceNotFoundException, Exception {
-        HttpURLConnection con = getServiceConnection("api/projects");
+    public List<Project> getProjects() throws AuthenticationFailedException, ServiceNotFoundException, IOException {
+        HttpURLConnection con = getServiceConnection("PoolParty/api/projects");
         if (con.getResponseCode() == 401) {
             throw new AuthenticationFailedException();
         } else if (con.getResponseCode() == 404) {
@@ -51,9 +51,11 @@ public class PPTApi {
         }
         JavaType type = CollectionType.construct(ArrayList.class, SimpleType.construct(Project.class));
         InputStream in = con.getInputStream();
+
         try {
             return (List<Project>) objectMapper.readValue(in, type);
-        } finally {
+        }
+        finally {
             in.close();
         }
     }
@@ -92,6 +94,8 @@ public class PPTApi {
 
     private HttpURLConnection getServiceConnection(String path) throws IOException {
         URL url = getServiceUrl(host, path);
+        logger.debug("connecting to service url: '" +url.toString()+ "'");
+
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         authentication.visit(con);
         return con;

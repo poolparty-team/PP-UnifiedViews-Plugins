@@ -1,6 +1,7 @@
 package eu.unifiedviews.plugins.swc.poolparty.extract;
 
 import eu.unifiedviews.dataunit.DataUnit;
+import eu.unifiedviews.dataunit.DataUnitException;
 import eu.unifiedviews.dataunit.rdf.WritableRDFDataUnit;
 import eu.unifiedviews.dpu.DPU;
 import eu.unifiedviews.dpu.DPUContext;
@@ -9,8 +10,9 @@ import eu.unifiedviews.helpers.dpu.config.AbstractConfigDialog;
 import eu.unifiedviews.helpers.dpu.config.ConfigDialogProvider;
 import eu.unifiedviews.helpers.dpu.config.ConfigurableBase;
 import eu.unifiedviews.plugins.swc.poolparty.PoolPartyApiConfig;
-import eu.unifiedviews.plugins.swc.poolparty.api.PPTApi;
+import eu.unifiedviews.plugins.swc.poolparty.api.PptApiConnector;
 import org.openrdf.repository.RepositoryConnection;
+import org.openrdf.repository.RepositoryException;
 import org.openrdf.rio.RDFFormat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +29,8 @@ public class ThesaurusLinkExtractor extends ConfigurableBase<ThesaurusLinkConfig
     @DataUnit.AsOutput(name = "output")
     public WritableRDFDataUnit rdfOutput;
 
+    private RepositoryConnection dataUnitConnection;
+
     public ThesaurusLinkExtractor() {
         super(ThesaurusLinkConfig.class);
     }
@@ -34,22 +38,42 @@ public class ThesaurusLinkExtractor extends ConfigurableBase<ThesaurusLinkConfig
     @Override
     public void execute(DPUContext dpuContext) throws DPUException, InterruptedException {
         try {
-            PoolPartyApiConfig poolPartyApiConfig = config.getApiConfig();
             String extractionQuery = createExtractionQuery(config.getLinkProperty());
-            logger.debug(extractionQuery);
-
-            URL url = PPTApi.getServiceUrl(poolPartyApiConfig.getServer(),
+            PoolPartyApiConfig poolPartyApiConfig = config.getApiConfig();
+            URL url = PptApiConnector.getServiceUrl(poolPartyApiConfig.getServer(),
                     "PoolParty/sparql/" + poolPartyApiConfig.getUriSupplement() +
-                    "?format=application/rdf%2Bxml&query=" + URLEncoder.encode(extractionQuery, "UTF-8"));
+                            "?format=application/rdf%2Bxml&query=" + URLEncoder.encode(extractionQuery, "UTF-8"));
+            logger.debug(extractionQuery);
 
             URLConnection pptConnection = url.openConnection();
             poolPartyApiConfig.getAuthentication().visit(pptConnection);
 
-            RepositoryConnection rdfOutputConnection = rdfOutput.getConnection();
-            rdfOutputConnection.add(pptConnection.getInputStream(), "", RDFFormat.RDFXML);
+            establishDataUnitConnection();
+            dataUnitConnection.add(pptConnection.getInputStream(), "", RDFFormat.RDFXML);
         }
         catch (Exception e) {
             throw new DPUException(e);
+        }
+        finally {
+            closeDataUnitConnection();
+        }
+    }
+
+    private void establishDataUnitConnection() {
+        try {
+            dataUnitConnection = rdfOutput.getConnection();
+        }
+        catch (DataUnitException e) {
+            logger.error("Error connecting to data unit", e);
+        }
+    }
+
+    private void closeDataUnitConnection() {
+        try {
+            dataUnitConnection.close();
+        }
+        catch (RepositoryException e) {
+            logger.error("Error closing connection to data unit");
         }
     }
 
