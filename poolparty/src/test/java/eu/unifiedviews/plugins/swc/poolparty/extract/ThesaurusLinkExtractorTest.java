@@ -1,6 +1,6 @@
 package eu.unifiedviews.plugins.swc.poolparty.extract;
 
-import eu.unifiedviews.plugins.swc.poolparty.PoolPartyApiConfig;
+import eu.unifiedviews.plugins.swc.poolparty.util.TestPPLinuxApiConfig;
 import eu.unifiedviews.plugins.swc.poolparty.util.TestWritableRdfUnit;
 import org.junit.Assert;
 import org.junit.Test;
@@ -20,15 +20,8 @@ public class ThesaurusLinkExtractorTest {
 
     private ThesaurusLinkConfig createExtractorConfig() {
         ThesaurusLinkConfig config = new ThesaurusLinkConfig();
-        config.setApiConfig(createApiConfig());
+        config.setApiConfig(new TestPPLinuxApiConfig());
         config.setLinkProperty(SKOS.EXACT_MATCH.stringValue());
-        return config;
-    }
-
-    private PoolPartyApiConfig createApiConfig() {
-        PoolPartyApiConfig config = new PoolPartyApiConfig();
-        config.setServer("http://test-pp-linux.semantic-web.at/");
-        config.setUriSupplement("test_unifiedviews");
         return config;
     }
 
