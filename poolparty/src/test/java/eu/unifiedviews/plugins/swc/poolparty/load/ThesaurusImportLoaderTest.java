@@ -1,6 +1,6 @@
 package eu.unifiedviews.plugins.swc.poolparty.load;
 
-import eu.unifiedviews.plugins.swc.poolparty.util.TestPPLinuxApiConfig;
+import eu.unifiedviews.plugins.swc.poolparty.util.ApiConfig;
 import eu.unifiedviews.plugins.swc.poolparty.util.TestRdfDataUnit;
 import org.junit.Assert;
 import org.junit.Test;
@@ -26,7 +26,7 @@ public class ThesaurusImportLoaderTest {
 
     private ThesaurusImportConfig createLoaderConfig() {
         ThesaurusImportConfig config = new ThesaurusImportConfig();
-        config.setApiConfig(new TestPPLinuxApiConfig());
+        config.setApiConfig(ApiConfig.createLocalApiConfig());
         return config;
     }
 

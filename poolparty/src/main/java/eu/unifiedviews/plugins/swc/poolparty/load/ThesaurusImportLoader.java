@@ -22,6 +22,7 @@ import org.openrdf.rio.Rio;
 import org.openrdf.rio.helpers.RDFHandlerWrapper;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
@@ -53,13 +54,14 @@ public class ThesaurusImportLoader extends
     private void importRdf() throws IOException, DataUnitException, RDFHandlerException, RepositoryException {
         PoolPartyApiConfig poolPartyApiConfig = config.getApiConfig();
         URL url = PptApiConnector.getServiceUrl(poolPartyApiConfig.getServer(),
-                "PoolParty/api/thesaurus/" +config.getApiConfig().getProjectId()+ "/import");
+                "PoolParty/!/projects/" +config.getApiConfig().getProjectId()+ "/import");
 
         URLConnection con = url.openConnection();
         con.setDoOutput(true);
         con.setRequestProperty("Content-Type", RDFFormat.TRIG.getDefaultMIMEType());
 
-        RDFHandler handler = Rio.createWriter(RDFFormat.TRIG, con.getOutputStream());
+        OutputStream os = con.getOutputStream();
+        RDFHandler handler = Rio.createWriter(RDFFormat.TRIG, os);
         final String targetGraph = config.getGraph();
         if (targetGraph != null) {
             handler = new RDFHandlerWrapper(handler) {
@@ -73,15 +75,13 @@ public class ThesaurusImportLoader extends
             };
         }
         inputDataUnit.getConnection().export(handler);
-        con.getOutputStream().close();
-
-        poolPartyApiConfig.getAuthentication().visit(con);
+        os.close();
     }
 
     private void createSnapshot() throws IOException, DPUException {
         PoolPartyApiConfig poolPartyApiConfig = config.getApiConfig();
         URL url = PptApiConnector.getServiceUrl(poolPartyApiConfig.getServer(),
-                "PoolParty/api/thesaurus/" +config.getApiConfig().getProjectId()+ "/snapshot");
+                "PoolParty/!/projects/" +config.getApiConfig().getProjectId()+ "/snapshot");
 
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         if (con.getResponseCode() != 200) {
