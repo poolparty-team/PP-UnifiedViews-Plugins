@@ -75,6 +75,21 @@
             <version>${sesame.version}</version>
             <type>jar</type>
         </dependency>
+
+        <!-- transitive deps needed for .jar deployment -->
+        <dependency>
+            <groupId>org.openrdf.sesame</groupId>
+            <artifactId>sesame-sail-api</artifactId>
+            <version>${sesame.version}</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.openrdf.sesame</groupId>
+            <artifactId>sesame-sail-inferencer</artifactId>
+            <version>${sesame.version}</version>
+            <type>jar</type>
+        </dependency>
+
     </dependencies>
 
 </project>

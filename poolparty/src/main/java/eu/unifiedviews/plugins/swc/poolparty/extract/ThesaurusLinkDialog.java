@@ -96,23 +96,5 @@ public class ThesaurusLinkDialog extends BaseConfigDialog<ThesaurusLinkConfig> {
         thesaurusLinkConfig.setLinkProperty(((LinkingProperty) linkProperty.getValue()).getUri());
         logger.debug("providing configuration: " +thesaurusLinkConfig.toString());
         return thesaurusLinkConfig;
-
-        /*
-        try {
-            URL url = PptApiConnector.getServiceUrl(apiConfig.getServer(), "PoolParty/sparql/" + apiConfig.getUriSupplement() + "?query=" + URLEncoder.encode("ASK {?x a <http://www.w3.org/2004/02/skos/core#Concept> }", "UTF-8"));
-            logger.info(url.toString());
-            Authentication authentication = apiConfig.getAuthentication();
-            HttpURLConnection con = (HttpURLConnection) url.openConnection();
-            authentication.visit(con);
-            if (con.getResponseCode() != 200) {
-                Notification.show("Unable to query SPARQL endpoint of project", "", Notification.TYPE_ERROR_MESSAGE);
-                throw new RuntimeException("Response code: "+con.getResponseCode());
-            }
-
-
-        } catch (IOException ex) {
-            logger.error("Unable to query SPARQL endpoint of project", ex);
-        }
-        */
     }
 }
