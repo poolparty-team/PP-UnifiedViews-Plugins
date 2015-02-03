@@ -10,6 +10,7 @@ public class ApiConfig {
         config.setServer("http://test-pp-linux.semantic-web.at/");
         config.setUriSupplement("test_unifiedviews");
         config.setProjectId("1DCDE7C4-981B-0001-2E92-12059D5A1C38");
+        config.setAuthentication(new BasicAuthentication("unifiedviews", "UnifiedViews"));
         return config;
     }
 

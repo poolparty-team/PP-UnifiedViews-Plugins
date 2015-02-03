@@ -2,7 +2,6 @@ package eu.unifiedviews.plugins.swc.poolparty.load;
 
 import eu.unifiedviews.plugins.swc.poolparty.util.ApiConfig;
 import eu.unifiedviews.plugins.swc.poolparty.util.TestRdfDataUnit;
-import org.junit.Assert;
 import org.junit.Test;
 import org.openrdf.model.Statement;
 import org.openrdf.model.impl.StatementImpl;
@@ -11,6 +10,7 @@ import org.openrdf.model.vocabulary.RDF;
 import org.openrdf.model.vocabulary.SKOS;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 public class ThesaurusImportLoaderTest {
 
@@ -24,15 +24,19 @@ public class ThesaurusImportLoaderTest {
         loader.execute(null);
     }
 
-    private ThesaurusImportConfig createLoaderConfig() {
-        ThesaurusImportConfig config = new ThesaurusImportConfig();
-        config.setApiConfig(ApiConfig.createLocalApiConfig());
-        return config;
+    @Test
+    public void importNoData() throws Exception {
+        ThesaurusImportLoader loader = new ThesaurusImportLoader();
+        loader.inputDataUnit = new TestRdfDataUnit(Collections.EMPTY_LIST);
+        loader.configureDirectly(createLoaderConfig());
+
+        loader.execute(null);
     }
 
-    @Test
-    public void importIntoNamedGraph() {
-        Assert.fail();
+    private ThesaurusImportConfig createLoaderConfig() {
+        ThesaurusImportConfig config = new ThesaurusImportConfig();
+        config.setApiConfig(ApiConfig.createTestPPLinuxApiConfig());
+        return config;
     }
 
 }
