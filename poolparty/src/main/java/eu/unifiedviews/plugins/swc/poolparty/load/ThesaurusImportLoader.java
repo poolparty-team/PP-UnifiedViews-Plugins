@@ -22,10 +22,9 @@ import org.openrdf.rio.Rio;
 import org.openrdf.rio.helpers.RDFHandlerWrapper;
 
 import java.io.IOException;
-import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.net.URLConnection;
 
 @DPU.AsLoader
 public class ThesaurusImportLoader extends
@@ -43,25 +42,31 @@ public class ThesaurusImportLoader extends
     @Override
     public void execute(DPUContext context) throws DPUException, InterruptedException {
         try {
-            importRdf();
-            createSnapshot();
+            int importResponse = importRdf();
+            //createSnapshot();
+
+            if (importResponse != HttpURLConnection.HTTP_OK) {
+                throw new DPUException("PPT API returned response code: " + importResponse);
+            }
         }
         catch (Exception e) {
             throw new DPUException("Error loading data", e);
         }
     }
 
-    private void importRdf() throws IOException, DataUnitException, RDFHandlerException, RepositoryException {
+    private int importRdf() throws IOException, DataUnitException, RDFHandlerException, RepositoryException {
         PoolPartyApiConfig poolPartyApiConfig = config.getApiConfig();
         URL url = PptApiConnector.getServiceUrl(poolPartyApiConfig.getServer(),
                 "PoolParty/!/projects/" +config.getApiConfig().getProjectId()+ "/import");
 
-        URLConnection con = url.openConnection();
+        HttpURLConnection con = (HttpURLConnection) url.openConnection();
+        poolPartyApiConfig.getAuthentication().visit(con);
+
         con.setDoOutput(true);
         con.setRequestProperty("Content-Type", RDFFormat.TRIG.getDefaultMIMEType());
+        OutputStreamWriter out = new OutputStreamWriter(con.getOutputStream());
 
-        OutputStream os = con.getOutputStream();
-        RDFHandler handler = Rio.createWriter(RDFFormat.TRIG, os);
+        RDFHandler handler = Rio.createWriter(RDFFormat.TRIG, out);
         final String targetGraph = config.getGraph();
         if (targetGraph != null) {
             handler = new RDFHandlerWrapper(handler) {
@@ -75,19 +80,26 @@ public class ThesaurusImportLoader extends
             };
         }
         inputDataUnit.getConnection().export(handler);
-        os.close();
+        try {
+            return con.getResponseCode();
+        }
+        finally {
+            out.close();
+        }
     }
 
-    private void createSnapshot() throws IOException, DPUException {
+    private int createSnapshot() throws IOException, DPUException {
         PoolPartyApiConfig poolPartyApiConfig = config.getApiConfig();
         URL url = PptApiConnector.getServiceUrl(poolPartyApiConfig.getServer(),
                 "PoolParty/!/projects/" +config.getApiConfig().getProjectId()+ "/snapshot");
 
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        if (con.getResponseCode() != 200) {
-            throw new DPUException("PPT API returned response code: " + con.getResponseCode());
+        try {
+            return con.getResponseCode();
         }
-        con.disconnect();
+        finally {
+            con.disconnect();
+        }
     }
 
     @Override
