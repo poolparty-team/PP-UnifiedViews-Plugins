@@ -1,7 +1,6 @@
 package eu.unifiedviews.plugins.swc.poolparty.load;
 
 import eu.unifiedviews.dataunit.DataUnit;
-import eu.unifiedviews.dataunit.DataUnitException;
 import eu.unifiedviews.dataunit.rdf.RDFDataUnit;
 import eu.unifiedviews.dpu.DPU;
 import eu.unifiedviews.dpu.DPUContext;
@@ -14,7 +13,6 @@ import eu.unifiedviews.plugins.swc.poolparty.api.PptApiConnector;
 import org.openrdf.model.Statement;
 import org.openrdf.model.impl.ContextStatementImpl;
 import org.openrdf.model.impl.URIImpl;
-import org.openrdf.repository.RepositoryException;
 import org.openrdf.rio.RDFFormat;
 import org.openrdf.rio.RDFHandler;
 import org.openrdf.rio.RDFHandlerException;
@@ -42,22 +40,18 @@ public class ThesaurusImportLoader extends
     @Override
     public void execute(DPUContext context) throws DPUException, InterruptedException {
         try {
-            int importResponse = importRdf();
-            //createSnapshot();
-
-            if (importResponse != HttpURLConnection.HTTP_OK) {
-                throw new DPUException("PPT API returned response code: " + importResponse);
-            }
+            importRdf();
+            createSnapshot();
         }
         catch (Exception e) {
             throw new DPUException("Error loading data", e);
         }
     }
 
-    private int importRdf() throws IOException, DataUnitException, RDFHandlerException, RepositoryException {
+    private void importRdf() throws Exception {
         PoolPartyApiConfig poolPartyApiConfig = config.getApiConfig();
         URL url = PptApiConnector.getServiceUrl(poolPartyApiConfig.getServer(),
-                "PoolParty/!/projects/" +config.getApiConfig().getProjectId()+ "/import");
+                "PoolParty/api/projects/" +config.getApiConfig().getProjectId()+ "/import");
 
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
         poolPartyApiConfig.getAuthentication().visit(con);
@@ -80,26 +74,24 @@ public class ThesaurusImportLoader extends
             };
         }
         inputDataUnit.getConnection().export(handler);
-        try {
-            return con.getResponseCode();
-        }
-        finally {
-            out.close();
+        ensureOk(con);
+    }
+
+    private void ensureOk(HttpURLConnection con) throws IOException, DPUException {
+        int resp = con.getResponseCode();
+        if (con.getResponseCode() != HttpURLConnection.HTTP_OK) {
+            throw new DPUException("PPT API returned response code: " + resp);
         }
     }
 
-    private int createSnapshot() throws IOException, DPUException {
+    private void createSnapshot() throws IOException, DPUException {
         PoolPartyApiConfig poolPartyApiConfig = config.getApiConfig();
         URL url = PptApiConnector.getServiceUrl(poolPartyApiConfig.getServer(),
-                "PoolParty/!/projects/" +config.getApiConfig().getProjectId()+ "/snapshot");
+                "PoolParty/api/projects/" +config.getApiConfig().getProjectId()+ "/snapshot");
 
         HttpURLConnection con = (HttpURLConnection) url.openConnection();
-        try {
-            return con.getResponseCode();
-        }
-        finally {
-            con.disconnect();
-        }
+        poolPartyApiConfig.getAuthentication().visit(con);
+        ensureOk(con);
     }
 
     @Override
