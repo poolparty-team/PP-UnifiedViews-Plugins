@@ -27,6 +27,12 @@
 
     <dependencies>
         <dependency>
+            <groupId>at.punkt.poolparty.extractor</groupId>
+            <artifactId>poolparty-extractor-client</artifactId>
+            <version>5.0.1</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.codehaus.jackson</groupId>
             <artifactId>jackson-mapper-asl</artifactId>
             <version>1.7.5</version>
@@ -89,7 +95,17 @@
             <version>${sesame.version}</version>
             <type>jar</type>
         </dependency>
-
     </dependencies>
+
+    <repositories>
+        <repository>
+            <id>pp-dev</id>
+            <name>PoolParty Development</name>
+            <url>https://mvn.semantic-web.at/nexus/content/groups/pp-dev/</url>
+            <snapshots>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
+        </repository>
+    </repositories>
 
 </project>

@@ -50,6 +50,7 @@ public class ThesaurusImportDialog extends BaseConfigDialog<ThesaurusImportConfi
                 "http://de.dbpedia.org/categories", "http://freebase.org", "http://geonames.org", "http://umbel.org/",
                 "http://sindice.com/", "http://wordnet.princeton.edu", "http://www.dmoz.org/")));
         mainLayout.addComponent(graph);
+        setCompositionRoot(mainLayout);
     }
 
     @Override
