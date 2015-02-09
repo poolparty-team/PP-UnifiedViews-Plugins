@@ -4,6 +4,7 @@
  */
 package eu.unifiedviews.plugins.swc.poolparty.ppx;
 
+import at.punkt.commons.openrdf.vocabulary.PPX;
 import at.punkt.poolparty.extractor.ExtractionService;
 import at.punkt.poolparty.extractor.PpxClient;
 import at.punkt.poolparty.extractor.web.domain.ThesaurusConcept;
@@ -22,15 +23,14 @@ import org.openrdf.model.impl.ValueFactoryImpl;
 import org.openrdf.model.vocabulary.SKOS;
 import org.openrdf.repository.RepositoryConnection;
 
-import javax.xml.crypto.dsig.TransformException;
 import java.util.List;
 
 /**
  *
  * @author Kata
  */
-@DPU.AsTransformer
-public class PPXTransformer extends ConfigurableBase<PPXConfig> implements ConfigDialogProvider<PPXConfig> {
+@DPU.AsExtractor
+public class PPXExtractor extends ConfigurableBase<PPXConfig> implements ConfigDialogProvider<PPXConfig> {
 
     private ValueFactory factory = new ValueFactoryImpl();
     private ExtractionService extractionService;
@@ -38,7 +38,7 @@ public class PPXTransformer extends ConfigurableBase<PPXConfig> implements Confi
     @DataUnit.AsOutput(name = "output")
     public WritableRDFDataUnit rdfOutput;
 
-    public PPXTransformer() {
+    public PPXExtractor() {
         super(PPXConfig.class);
     }
 
@@ -50,16 +50,15 @@ public class PPXTransformer extends ConfigurableBase<PPXConfig> implements Confi
                     config.getProjectId(),
                     config.getLanguage(), "",
                     config.getText());
-            RepositoryConnection con = repository.getConnection();
+            RepositoryConnection con = rdfOutput.getConnection();
             try {
-
                 for (ThesaurusConcept concept : response) {
                     URI conceptUri = factory.createURI(concept.getUri());
                     Literal scoreLiteral = factory.createLiteral(concept.getScore());
-                    con.add(factory.createStatement(conceptUri, PPX.SCORE, scoreLiteral), graph);
+                    con.add(factory.createStatement(conceptUri, PPX.SCORE, scoreLiteral));
 
                     Literal prefLabelLiteral = factory.createLiteral(concept.getPrefLabel());
-                    con.add(factory.createStatement(conceptUri, SKOS.PREF_LABEL, prefLabelLiteral), graph);
+                    con.add(factory.createStatement(conceptUri, SKOS.PREF_LABEL, prefLabelLiteral));
                 }
             } finally {
                 con.close();

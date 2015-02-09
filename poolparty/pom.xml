@@ -27,6 +27,11 @@
 
     <dependencies>
         <dependency>
+            <groupId>at.punkt.commons</groupId>
+            <artifactId>punkt-commons-vocabulary</artifactId>
+            <version>1.4</version>
+        </dependency>
+        <dependency>
             <groupId>at.punkt.poolparty.extractor</groupId>
             <artifactId>poolparty-extractor-client</artifactId>
             <version>5.0.1</version>

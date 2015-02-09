@@ -3,11 +3,11 @@ package eu.unifiedviews.plugins.swc.poolparty.ppx;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class PPXTransformerTest {
+public class PPXExtractorTest {
 
     @Test
     public void test() throws Exception{
-        PPXTransformer transformer = new PPXTransformer();
+        PPXExtractor transformer = new PPXExtractor();
         transformer.configureDirectly(createConfig());
 
         Assert.fail();
