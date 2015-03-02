@@ -1,6 +1,6 @@
 package eu.unifiedviews.plugins.swc.poolparty.extract;
 
-import eu.unifiedviews.plugins.swc.poolparty.util.ApiConfig;
+import eu.unifiedviews.plugins.swc.poolparty.util.ConfigProvider;
 import eu.unifiedviews.plugins.swc.poolparty.util.TestWritableRdfUnit;
 import org.junit.Assert;
 import org.junit.Test;
@@ -20,7 +20,7 @@ public class ThesaurusLinkExtractorTest {
 
     private ThesaurusLinkConfig createExtractorConfig() {
         ThesaurusLinkConfig config = new ThesaurusLinkConfig();
-        config.setApiConfig(ApiConfig.createTestPPLinuxApiConfig());
+        config.setApiConfig(new ConfigProvider().createTestPPLinuxApiConfig());
         config.setLinkProperty(SKOS.EXACT_MATCH.stringValue());
         return config;
     }

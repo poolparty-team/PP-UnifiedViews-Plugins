@@ -4,11 +4,14 @@
  */
 package eu.unifiedviews.plugins.swc.poolparty.ppx;
 
-import com.vaadin.data.fieldgroup.BeanFieldGroup;
-import com.vaadin.data.fieldgroup.FieldGroup;
-import com.vaadin.ui.*;
+import com.vaadin.data.validator.AbstractStringValidator;
+import com.vaadin.ui.ComboBox;
+import com.vaadin.ui.TextArea;
+import com.vaadin.ui.TextField;
+import com.vaadin.ui.VerticalLayout;
 import eu.unifiedviews.dpu.config.DPUConfigException;
 import eu.unifiedviews.helpers.dpu.config.BaseConfigDialog;
+import eu.unifiedviews.plugins.swc.poolparty.PoolPartyApiPanel;
 
 /**
  *
@@ -16,11 +19,45 @@ import eu.unifiedviews.helpers.dpu.config.BaseConfigDialog;
  */
 public class PPXConfigDialog extends BaseConfigDialog<PPXConfig> {
 
-    private FieldGroup fieldGroup;
+    private PoolPartyApiPanel apiPanel = new PoolPartyApiPanel();
+    private TextField numberOfConcepts = new TextField("Number of concepts");
+    private ComboBox language = new ComboBox("Language");
+    private TextArea text = new TextArea("Text");
 
     PPXConfigDialog() {
         super(PPXConfig.class);
+        configureFormElements();
         buildMainLayout();
+    }
+
+    private void configureFormElements() {
+        numberOfConcepts.setRequired(true);
+        numberOfConcepts.setWidth("710px");
+        numberOfConcepts.addValidator(new AbstractStringValidator("Must be a number.") {
+            @Override
+            protected boolean isValidValue(String value) {
+                try {
+                    Integer num = new Integer(value);
+                    if (num > 0) {
+                        return true;
+                    }
+                    return false;
+                } catch (Exception ex) {
+                    setErrorMessage(ex.getMessage());
+                    return false;
+                }
+            }
+        });
+
+        language.addItem("en");
+        language.addItem("de");
+        language.setRequired(true);
+        language.setNullSelectionAllowed(false);
+        language.setDescription("The language of the extraction.");
+
+        text.setSizeFull();
+        text.setRows(20);
+        text.setRequired(true);
     }
 
     private void buildMainLayout() {
@@ -28,109 +65,30 @@ public class PPXConfigDialog extends BaseConfigDialog<PPXConfig> {
         setHeight("100%");
 
         VerticalLayout mainLayout = new VerticalLayout();
-        mainLayout.addComponent(new ConfigForm());
-
-        /*
-        fieldGroup = new FieldGroup();
-        fieldGroup.setFieldFactory(new DefaultFieldGroupFieldFactory() {
-            @Override
-            public <T extends Field> T createField(Class<?> type, Class<T> fieldType) {
-                return super.createField(type, fieldType);
-            }
-
-            public Field createField(Item item, Object propertyId, Component uiContext) {
-                if (propertyId.equals("numberOfConcepts")) {
-                    TextField f = new TextField("Number of concepts");
-                    f.setRequired(true);
-                    f.setWidth("710px");
-                    f.addValidator(new AbstractStringValidator("Must be a number.") {
-                        @Override
-                        protected boolean isValidValue(String value) {
-                            try {
-                                Integer num = new Integer(value);
-                                if (num > 0) {
-                                    return true;
-                                }
-                                return false;
-                            } catch (Exception ex) {
-                                setErrorMessage(ex.getMessage());
-                                return false;
-                            }
-                        }
-
-                    });
-                    return f;
-                } else if (propertyId.equals("projectId")) {
-                    TextField f = new TextField("Thesaurus project id.");
-                    f.setRequired(true);
-                    f.setWidth("710px");
-                    f.setRequired(true);
-                    return f;
-                } else if (propertyId.equals("language")) {
-                    ComboBox field = new ComboBox("Language");
-                    field.addItem("en");
-                    field.addItem("de");
-                    field.setRequired(true);
-                    field.setNullSelectionAllowed(false);
-                    field.setDescription("The language of the extraction.");
-                    return field;
-                } else if (propertyId.equals("server")) {
-                    TextField f = new TextField("Server url (eg. http://localhost:8080/extractor).");
-                    f.setRequired(true);
-                    f.setWidth("710px");
-                    f.setRequired(true);
-                    return f;
-                } else if (propertyId.equals("text")) {
-                    TextArea field = new TextArea("Text");
-                    field.setSizeFull();
-                    field.setRows(20);
-                    field.setRequired(true);
-                    return field;
-                }
-                return null;
-            }
-        });
-        form.setItemDataSource(new BeanItem<PPXConfig>(config));
-        addComponent(form);
-        */
+        mainLayout.addComponent(apiPanel);
+        mainLayout.addComponent(numberOfConcepts);
+        mainLayout.addComponent(language);
+        mainLayout.addComponent(text);
 
         setCompositionRoot(mainLayout);
     }
 
     @Override
     protected void setConfiguration(PPXConfig conf) throws DPUConfigException {
-
+        apiPanel.setFromApiConfig(conf.getApiConfig());
+        numberOfConcepts.setValue(Integer.toString(conf.getNumberOfConcepts()));
+        language.setValue(conf.getLanguage());
+        text.setValue(conf.getText());
     }
 
     @Override
     protected PPXConfig getConfiguration() throws DPUConfigException {
-        return new PPXConfig();
+        PPXConfig ppxConfig = new PPXConfig();
+        ppxConfig.setApiConfig(apiPanel.getApiConfig());
+        ppxConfig.setNumberOfConcepts(Integer.parseInt(numberOfConcepts.getValue()));
+        ppxConfig.setLanguage(language.getValue().toString());
+        ppxConfig.setText(text.getValue());
+        return ppxConfig;
     }
 
-    private class ConfigForm extends CustomComponent {
-
-        TextField conceptCount = new TextField("Number of concepts");
-
-        TextField projectId = new TextField("Thesaurus project id.");
-
-        ComboBox language = new ComboBox("Language");
-
-        TextField server = new TextField("Server url (eg. http://localhost:8080/extractor).");
-
-        TextArea text = new TextArea("Text");
-
-        ConfigForm() {
-            FormLayout layout = new FormLayout();
-            layout.addComponent(conceptCount);
-            layout.addComponent(projectId);
-            layout.addComponent(language);
-            layout.addComponent(server);
-            layout.addComponent(text);
-
-            FieldGroup binder = new BeanFieldGroup<>(PPXConfig.class);
-            binder.bind(conceptCount, "numberOfConcepts");
-
-            setCompositionRoot(layout);
-        }
-    }
 }

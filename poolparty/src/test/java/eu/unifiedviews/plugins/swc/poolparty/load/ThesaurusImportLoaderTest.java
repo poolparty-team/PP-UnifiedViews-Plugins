@@ -1,6 +1,6 @@
 package eu.unifiedviews.plugins.swc.poolparty.load;
 
-import eu.unifiedviews.plugins.swc.poolparty.util.ApiConfig;
+import eu.unifiedviews.plugins.swc.poolparty.util.ConfigProvider;
 import eu.unifiedviews.plugins.swc.poolparty.util.TestRdfDataUnit;
 import org.junit.Test;
 import org.openrdf.model.Statement;
@@ -35,7 +35,7 @@ public class ThesaurusImportLoaderTest {
 
     private ThesaurusImportConfig createLoaderConfig() {
         ThesaurusImportConfig config = new ThesaurusImportConfig();
-        config.setApiConfig(ApiConfig.createTestPPLinuxApiConfig());
+        config.setApiConfig(new ConfigProvider().createTestPPLinuxApiConfig());
         return config;
     }
 

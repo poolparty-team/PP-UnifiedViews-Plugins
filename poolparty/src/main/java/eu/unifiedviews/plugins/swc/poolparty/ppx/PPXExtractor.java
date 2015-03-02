@@ -16,6 +16,8 @@ import eu.unifiedviews.dpu.DPUException;
 import eu.unifiedviews.helpers.dpu.config.AbstractConfigDialog;
 import eu.unifiedviews.helpers.dpu.config.ConfigDialogProvider;
 import eu.unifiedviews.helpers.dpu.config.ConfigurableBase;
+import eu.unifiedviews.plugins.swc.poolparty.PoolPartyApiConfig;
+import eu.unifiedviews.plugins.swc.poolparty.api.BasicAuthentication;
 import org.openrdf.model.Literal;
 import org.openrdf.model.URI;
 import org.openrdf.model.ValueFactory;
@@ -45,10 +47,13 @@ public class PPXExtractor extends ConfigurableBase<PPXConfig> implements ConfigD
     @Override
     public void execute(DPUContext context) throws DPUException, InterruptedException {
         try {
-            extractionService =  new PpxClient(config.getServer(), "apiuser", "password");
+            PoolPartyApiConfig apiConfig = config.getApiConfig();
+            BasicAuthentication auth = (BasicAuthentication) config.getApiConfig().getAuthentication();
+            extractionService =  new PpxClient(apiConfig.getServer(), auth.getUsername(), auth.getPassword());
             List<ThesaurusConcept> response = extractionService.getConcepts(
-                    config.getProjectId(),
-                    config.getLanguage(), "",
+                    apiConfig.getProjectId(),
+                    config.getLanguage(),
+                    "",
                     config.getText());
             RepositoryConnection con = rdfOutput.getConnection();
             try {

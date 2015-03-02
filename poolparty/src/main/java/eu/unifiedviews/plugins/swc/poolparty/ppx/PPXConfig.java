@@ -4,6 +4,8 @@
  */
 package eu.unifiedviews.plugins.swc.poolparty.ppx;
 
+import eu.unifiedviews.plugins.swc.poolparty.PoolPartyApiConfig;
+
 /**
  *
  * @author Kata
@@ -13,24 +15,7 @@ public class PPXConfig {
     private int numberOfConcepts = 10;
     private String text="";
     private String language;
-    private String projectId="";
-    private String server = "";
-
-    public String getServer() {
-        return server;
-    }
-
-    public void setServer(String server) {
-        this.server = server;
-    }
-
-    public String getProjectId() {
-        return projectId;
-    }
-
-    public void setProjectId(String projectId) {
-        this.projectId = projectId;
-    }
+    private PoolPartyApiConfig apiConfig;
 
     public String getLanguage() {
         return language;
@@ -55,4 +40,13 @@ public class PPXConfig {
     public void setNumberOfConcepts(int numberOfConcepts) {
         this.numberOfConcepts = numberOfConcepts;
     }
+
+    public PoolPartyApiConfig getApiConfig() {
+        return apiConfig;
+    }
+
+    public void setApiConfig(PoolPartyApiConfig apiConfig) {
+        this.apiConfig = apiConfig;
+    }
+
 }
