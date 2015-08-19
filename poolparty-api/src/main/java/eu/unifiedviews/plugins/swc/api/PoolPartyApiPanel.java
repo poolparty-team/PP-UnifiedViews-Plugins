@@ -1,12 +1,12 @@
-package eu.unifiedviews.plugins.swc.poolparty;
+package eu.unifiedviews.plugins.swc.api;
 
 import com.vaadin.data.Property;
 import com.vaadin.data.util.BeanItemContainer;
 import com.vaadin.event.ItemClickEvent;
 import com.vaadin.ui.*;
 import eu.unifiedviews.dpu.config.DPUConfigException;
-import eu.unifiedviews.plugins.swc.poolparty.api.*;
-import eu.unifiedviews.plugins.swc.poolparty.api.json.model.Project;
+import eu.unifiedviews.plugins.swc.auth.*;
+import eu.unifiedviews.plugins.swc.api.json.model.Project;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

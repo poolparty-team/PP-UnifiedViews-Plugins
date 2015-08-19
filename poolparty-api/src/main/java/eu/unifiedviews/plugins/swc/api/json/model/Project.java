@@ -1,4 +1,4 @@
-package eu.unifiedviews.plugins.swc.poolparty.api.json.model;
+package eu.unifiedviews.plugins.swc.api.json.model;
 
 import java.util.ArrayList;
 import java.util.List;

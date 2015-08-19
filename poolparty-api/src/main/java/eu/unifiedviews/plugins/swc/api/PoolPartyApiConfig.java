@@ -1,8 +1,8 @@
-package eu.unifiedviews.plugins.swc.poolparty;
+package eu.unifiedviews.plugins.swc.api;
 
 
-import eu.unifiedviews.plugins.swc.poolparty.api.Authentication;
-import eu.unifiedviews.plugins.swc.poolparty.api.NoAuthentication;
+import eu.unifiedviews.plugins.swc.auth.Authentication;
+import eu.unifiedviews.plugins.swc.auth.NoAuthentication;
 
 /**
  *
