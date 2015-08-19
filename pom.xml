@@ -21,6 +21,7 @@
         <module>poolparty-api</module>
         <module>uv-e-thesaurusLink</module>
         <module>uv-l-thesaurusImport</module>
+        <module>uv-e-thesaurusLinker</module>
     </modules>
 
     <properties>
