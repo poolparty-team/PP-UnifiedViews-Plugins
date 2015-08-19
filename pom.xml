@@ -19,9 +19,8 @@
     <modules>
         <module>poolparty-auth</module>
         <module>poolparty-api</module>
-        <module>uv-e-thesaurusLink</module>
-        <module>uv-l-thesaurusImport</module>
         <module>uv-e-thesaurusLinker</module>
+        <module>uv-l-thesaurusImporter</module>
     </modules>
 
     <properties>
