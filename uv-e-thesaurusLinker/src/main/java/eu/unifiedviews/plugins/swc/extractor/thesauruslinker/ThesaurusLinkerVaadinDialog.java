@@ -1,20 +1,20 @@
-package eu.unifiedviews.plugins.swc.poolparty.extract;
+package eu.unifiedviews.plugins.swc.extractor.thesauruslinker;
 
 import com.vaadin.data.util.BeanItemContainer;
 import com.vaadin.ui.ComboBox;
 import com.vaadin.ui.VerticalLayout;
 import eu.unifiedviews.dpu.config.DPUConfigException;
-import eu.unifiedviews.helpers.dpu.config.BaseConfigDialog;
-import eu.unifiedviews.plugins.swc.poolparty.PoolPartyApiConfig;
-import eu.unifiedviews.plugins.swc.poolparty.PoolPartyApiPanel;
+import eu.unifiedviews.helpers.dpu.vaadin.dialog.AbstractDialog;
+import eu.unifiedviews.plugins.swc.api.PoolPartyApiConfig;
+import eu.unifiedviews.plugins.swc.api.PoolPartyApiPanel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
-public class ThesaurusLinkDialog extends BaseConfigDialog<ThesaurusLinkConfig> {
+public class ThesaurusLinkerVaadinDialog extends AbstractDialog<ThesaurusLinkerConfig_V1> {
 
-    private final Logger logger = LoggerFactory.getLogger(ThesaurusLinkDialog.class);
+    private final Logger logger = LoggerFactory.getLogger(ThesaurusLinkerVaadinDialog.class);
     private final ComboBox linkProperty = new ComboBox("Linking Property");
     private PoolPartyApiPanel apiPanel = new PoolPartyApiPanel();
 
@@ -45,12 +45,12 @@ public class ThesaurusLinkDialog extends BaseConfigDialog<ThesaurusLinkConfig> {
         }
     }
 
-    ThesaurusLinkDialog() {
-        super(ThesaurusLinkConfig.class);
-        buildMainLayout();
+    ThesaurusLinkerVaadinDialog() {
+        super(ThesaurusLinker.class);
     }
 
-    private void buildMainLayout() {
+    @Override
+    protected void buildDialogLayout() {
         setWidth("100%");
         setHeight("100%");
 
@@ -76,7 +76,7 @@ public class ThesaurusLinkDialog extends BaseConfigDialog<ThesaurusLinkConfig> {
     }
 
     @Override
-    protected void setConfiguration(ThesaurusLinkConfig config) throws DPUConfigException {
+    protected void setConfiguration(ThesaurusLinkerConfig_V1 config) throws DPUConfigException {
         logger.debug("setting configuration: " +config.toString());
 
         apiPanel.setFromApiConfig(config.getApiConfig());
@@ -89,12 +89,12 @@ public class ThesaurusLinkDialog extends BaseConfigDialog<ThesaurusLinkConfig> {
     }
 
     @Override
-    protected ThesaurusLinkConfig getConfiguration() throws DPUConfigException {
-        ThesaurusLinkConfig thesaurusLinkConfig = new ThesaurusLinkConfig();
+    protected ThesaurusLinkerConfig_V1 getConfiguration() throws DPUConfigException {
+        ThesaurusLinkerConfig_V1 thesaurusLinkerConfigV1 = new ThesaurusLinkerConfig_V1();
         PoolPartyApiConfig apiConfig = apiPanel.getApiConfig();
-        thesaurusLinkConfig.setApiConfig(apiConfig);
-        thesaurusLinkConfig.setLinkProperty(((LinkingProperty) linkProperty.getValue()).getUri());
-        logger.debug("providing configuration: " +thesaurusLinkConfig.toString());
-        return thesaurusLinkConfig;
+        thesaurusLinkerConfigV1.setApiConfig(apiConfig);
+        thesaurusLinkerConfigV1.setLinkProperty(((LinkingProperty) linkProperty.getValue()).getUri());
+        logger.debug("providing configuration: " + thesaurusLinkerConfigV1.toString());
+        return thesaurusLinkerConfigV1;
     }
 }

@@ -1,15 +1,16 @@
-package eu.unifiedviews.plugins.swc.poolparty.extract;
+package eu.unifiedviews.plugins.swc.extractor.thesauruslinker;
 
 
-import eu.unifiedviews.plugins.swc.poolparty.PoolPartyApiConfig;
+import eu.unifiedviews.plugins.swc.api.PoolPartyApiConfig;
 
 /**
  *
  * @author kreisera
  */
-public class ThesaurusLinkConfig {
+public class ThesaurusLinkerConfig_V1 {
 
     private PoolPartyApiConfig apiConfig = new PoolPartyApiConfig();
+
     private String linkProperty = "http://www.w3.org/2004/02/skos/core#exactMatch";
 
     public PoolPartyApiConfig getApiConfig() {

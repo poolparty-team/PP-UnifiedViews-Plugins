@@ -1,16 +1,14 @@
-package eu.unifiedviews.plugins.swc.poolparty.extract;
+package eu.unifiedviews.plugins.swc.extractor.thesauruslinker;
 
 import eu.unifiedviews.dataunit.DataUnit;
 import eu.unifiedviews.dataunit.DataUnitException;
 import eu.unifiedviews.dataunit.rdf.WritableRDFDataUnit;
 import eu.unifiedviews.dpu.DPU;
-import eu.unifiedviews.dpu.DPUContext;
 import eu.unifiedviews.dpu.DPUException;
-import eu.unifiedviews.helpers.dpu.config.AbstractConfigDialog;
-import eu.unifiedviews.helpers.dpu.config.ConfigDialogProvider;
-import eu.unifiedviews.helpers.dpu.config.ConfigurableBase;
-import eu.unifiedviews.plugins.swc.poolparty.PoolPartyApiConfig;
-import eu.unifiedviews.plugins.swc.poolparty.api.PptApiConnector;
+import eu.unifiedviews.helpers.dpu.config.ConfigHistory;
+import eu.unifiedviews.helpers.dpu.exec.AbstractDpu;
+import eu.unifiedviews.plugins.swc.api.PoolPartyApiConfig;
+import eu.unifiedviews.plugins.swc.api.PptApiConnector;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.rio.RDFFormat;
@@ -23,21 +21,21 @@ import java.net.URLConnection;
 import java.net.URLEncoder;
 
 @DPU.AsExtractor
-public class ThesaurusLinkExtractor extends ConfigurableBase<ThesaurusLinkConfig> implements ConfigDialogProvider<ThesaurusLinkConfig> {
+public class ThesaurusLinker extends AbstractDpu<ThesaurusLinkerConfig_V1> {
 
-    private final Logger logger = LoggerFactory.getLogger(ThesaurusLinkExtractor.class);
+    private final Logger logger = LoggerFactory.getLogger(ThesaurusLinker.class);
 
     @DataUnit.AsOutput(name = "output")
     public WritableRDFDataUnit rdfOutput;
 
     private RepositoryConnection dataUnitConnection;
 
-    public ThesaurusLinkExtractor() {
-        super(ThesaurusLinkConfig.class);
+    public ThesaurusLinker() {
+        super(ThesaurusLinkerVaadinDialog.class, ConfigHistory.noHistory(ThesaurusLinkerConfig_V1.class));
     }
 
     @Override
-    public void execute(DPUContext dpuContext) throws DPUException, InterruptedException {
+    protected void innerExecute() throws DPUException {
         try {
             PoolPartyApiConfig poolPartyApiConfig = config.getApiConfig();
             URLConnection pptConnection = establishPptConnection(poolPartyApiConfig);
@@ -87,11 +85,6 @@ public class ThesaurusLinkExtractor extends ConfigurableBase<ThesaurusLinkConfig
             .append("CONSTRUCT {?concept <").append(linkProperty).append("> ?link } WHERE { ?concept a skos:Concept. ")
             .append("?concept <").append(linkProperty).append("> ?link. }");
         return queryBuilder.toString();
-    }
-
-    @Override
-    public AbstractConfigDialog<ThesaurusLinkConfig> getConfigurationDialog() {
-        return new ThesaurusLinkDialog();
     }
 
 }

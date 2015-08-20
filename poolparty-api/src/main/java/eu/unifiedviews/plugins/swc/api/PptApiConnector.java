@@ -1,6 +1,8 @@
-package eu.unifiedviews.plugins.swc.poolparty.api;
+package eu.unifiedviews.plugins.swc.api;
 
-import eu.unifiedviews.plugins.swc.poolparty.api.json.model.Project;
+import eu.unifiedviews.plugins.swc.api.json.model.Project;
+import eu.unifiedviews.plugins.swc.auth.Authentication;
+import eu.unifiedviews.plugins.swc.auth.AuthenticationFailedException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.map.type.CollectionType;
 import org.codehaus.jackson.map.type.SimpleType;

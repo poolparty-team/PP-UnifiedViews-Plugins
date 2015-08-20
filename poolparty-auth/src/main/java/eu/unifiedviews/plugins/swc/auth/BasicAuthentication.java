@@ -1,4 +1,4 @@
-package eu.unifiedviews.plugins.swc.poolparty.api;
+package eu.unifiedviews.plugins.swc.auth;
 
 import org.apache.commons.codec.binary.Base64;
 

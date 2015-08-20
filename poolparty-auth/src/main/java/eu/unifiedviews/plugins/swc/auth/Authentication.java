@@ -1,4 +1,4 @@
-package eu.unifiedviews.plugins.swc.poolparty.api;
+package eu.unifiedviews.plugins.swc.auth;
 
 import java.net.URLConnection;
 
