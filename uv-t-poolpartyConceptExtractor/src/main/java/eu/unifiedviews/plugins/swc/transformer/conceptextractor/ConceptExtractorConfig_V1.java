@@ -6,10 +6,14 @@ package eu.unifiedviews.plugins.swc.transformer.conceptextractor;
  * @author Yang Yuanzhe
  */
 public class ConceptExtractorConfig_V1 {
-    private String server = "";
+    private String serverUrl = "";
+    private int serverPort = 80;
     private String projectId = "";
     private String uriSupplement = "";
     private String language = "";
+    private String extractorApi = "/extractor/api/annotate";
+    private String username = "";
+    private String password = "";
 
     public ConceptExtractorConfig_V1() {
 
@@ -23,12 +27,12 @@ public class ConceptExtractorConfig_V1 {
         this.uriSupplement = uriSupplement;
     }
 
-    public String getServer() {
-        return server;
+    public String getServerUrl() {
+        return serverUrl;
     }
 
-    public void setServer(String server) {
-        this.server = server;
+    public void setServerUrl(String serverUrl) {
+        this.serverUrl = serverUrl;
     }
 
     public String getProjectId() {
@@ -47,4 +51,39 @@ public class ConceptExtractorConfig_V1 {
         this.language = language;
     }
 
+    public String getExtractorApi() {
+        return extractorApi;
+    }
+
+    public void setExtractorApi(String extractorApi) {
+        this.extractorApi = extractorApi;
+    }
+
+    public int getServerPort() {
+        return serverPort;
+    }
+
+    public void setServerPort(int serverPort) {
+        this.serverPort = serverPort;
+    }
+
+    public String getServiceRequestUrl() {
+        return serverUrl + ":" + serverPort + extractorApi;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
 }
