@@ -13,7 +13,7 @@
 
     <properties>
         <dpu.package>eu.unifiedviews.plugins.swc.poolparty</dpu.package>
-        <dpu.mainClass>Tabular</dpu.mainClass>
+        <dpu.mainClass>ConceptExtractor</dpu.mainClass>
     </properties>
 
     <dependencies>
