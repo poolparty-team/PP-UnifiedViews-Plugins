@@ -5,6 +5,8 @@ import eu.unifiedviews.dataunit.rdf.RDFDataUnit;
 import eu.unifiedviews.dataunit.rdf.WritableRDFDataUnit;
 import eu.unifiedviews.dpu.DPU;
 import eu.unifiedviews.dpu.DPUException;
+import eu.unifiedviews.helpers.dataunit.DataUnitUtils;
+import eu.unifiedviews.helpers.dataunit.rdf.RdfDataUnitUtils;
 import eu.unifiedviews.helpers.dpu.extension.rdf.simple.WritableSimpleRdf;
 import org.apache.commons.codec.Charsets;
 import org.apache.http.HttpHost;
@@ -26,7 +28,6 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.openrdf.model.*;
-import org.openrdf.model.impl.LinkedHashModel;
 import org.openrdf.model.impl.URIImpl;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
@@ -69,6 +70,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
     @DataUnit.AsOutput(name = "output")
     public WritableRDFDataUnit output;
 
+    @ExtensionInitializer.Init(param = "output")
     public WritableSimpleRdf rdfWrapper;
 
 	public ConceptExtractor() {
@@ -77,14 +79,19 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
 		
     @Override
     protected void innerExecute() throws DPUException {
-        String server = config.getServerUrl();
-        String language = config.getLanguage();
-        String projectId = config.getProjectId();
+        final RDFDataUnit.Entry outputEntry = faultTolerance.execute(new FaultTolerance.ActionReturn<RDFDataUnit.Entry>() {
 
+            @Override
+            public RDFDataUnit.Entry action() throws Exception {
+                return RdfDataUnitUtils.addGraph(output, DataUnitUtils.generateSymbolicName(this.getClass()));
+            }
+        });
+        rdfWrapper.setOutput(outputEntry);
 
-        ContextUtils.sendShortInfo(ctx, "Tabular.message");
-
-        faultTolerance.execute();
+        ContextUtils.sendShortInfo(ctx, "Extraction start");
+        loadGraphStatements();
+        executeConceptExtraction();
+        rdfWrapper.flushBuffer();
     }
 
     private void loadGraphStatements() throws DPUException {
@@ -100,7 +107,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         try {
             if (graphStatements != null && graphStatements.hasNext()) {
                 String serviceUrl = config.getServiceRequestUrl();
-                HttpStateWrapper wrapper = createHttpStateWithAuth();
+                HttpStateWrapper httpWrapper = createHttpStateWithAuth();
                 List<NameValuePair> nvps = new ArrayList<>();
                 nvps.add(new BasicNameValuePair("text", ""));
                 nvps.add(new BasicNameValuePair("documentUri", ""));
@@ -116,30 +123,10 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                 }
 
                 while (graphStatements.hasNext()) {
-                    Statement statement = graphStatements.next();
-                    Resource subject = statement.getSubject();
-                    String predicateLocalName = statement.getPredicate().getLocalName();
-                    String text = statement.getObject().stringValue();
-                    URI tagPredicate = new URIImpl("http://schema.semantic-web.at/ppx/taggedResourceFor"
-                            + predicateLocalName.charAt(0) + predicateLocalName.substring(1));
-                    URI taggedResource = new URIImpl("http://schema.semantic-web.at/ppx/" + predicateLocalName + "/"
-                            + UUID.randomUUID().toString() + "#id");
-                    nvps.set(0, new BasicNameValuePair("text", text));
-                    nvps.set(1, new BasicNameValuePair("documentUri", taggedResource.toString()));
-
-
-                    String rdf = requestRdfResult(serviceUrl, nvps, wrapper);
-                    List<Statement> statements = new ArrayList<>();
-                    RDFParser rdfParser = Rio.createParser(RDFFormat.RDFXML);
-                    rdfParser.setRDFHandler(new StatementCollector(statements));
-                    try {
-                        rdfParser.parse(new StringReader(rdf), taggedResource.toString());
-                    } catch (Exception e) {
-                        throw new DPUException(e);
+                    if (ctx.canceled()) {
+                        throw ContextUtils.dpuExceptionCancelled(ctx);
                     }
-
-                    rdfWrapper.add(statements);
-                    rdfWrapper.add(subject, tagPredicate, taggedResource);
+                    extractSingleObject(graphStatements.next(), nvps, serviceUrl, httpWrapper);
                 }
             }
         } catch (RepositoryException e) {
@@ -148,7 +135,33 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
 
     }
 
-    private String requestRdfResult(String serviceUrl, List<NameValuePair> nvps, HttpStateWrapper wrapper) throws DPUException {
+    private void extractSingleObject(Statement statement, List<NameValuePair> nvps, String serviceUrl,
+                                     HttpStateWrapper httpWrapper) throws DPUException {
+        Resource subject = statement.getSubject();
+        String predicateLocalName = statement.getPredicate().getLocalName();
+        String text = statement.getObject().stringValue();
+        URI tagPredicate = new URIImpl("http://schema.semantic-web.at/ppx/taggedResourceFor"
+                + predicateLocalName.charAt(0) + predicateLocalName.substring(1));
+        URI taggedResource = new URIImpl("http://schema.semantic-web.at/ppx/" + predicateLocalName + "/"
+                + UUID.randomUUID().toString() + "#id");
+        nvps.set(0, new BasicNameValuePair("text", text));
+        nvps.set(1, new BasicNameValuePair("documentUri", taggedResource.toString()));
+
+        String rdf = requestExtractionService(serviceUrl, nvps, httpWrapper);
+        List<Statement> rdfExtractionResult = new ArrayList<>();
+        RDFParser rdfParser = Rio.createParser(RDFFormat.RDFXML);
+        rdfParser.setRDFHandler(new StatementCollector(rdfExtractionResult));
+        try {
+            rdfParser.parse(new StringReader(rdf), "http://schema.semantic-web.at/ppx/");
+        } catch (Exception e) {
+            throw new DPUException(e);
+        }
+
+        rdfWrapper.add(rdfExtractionResult);
+        rdfWrapper.add(subject, tagPredicate, taggedResource);
+    }
+
+    private String requestExtractionService(String serviceUrl, List<NameValuePair> nvps, HttpStateWrapper wrapper) throws DPUException {
         String triples = null;
         try {
             HttpPost httpPost = new HttpPost(serviceUrl);
@@ -192,6 +205,4 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
             this.context = context;
         }
     }
-
-    String uri = "http://poolparty.capsenta.com:8080/extractor/api/annotate?projectId=1DCE358B-0316-0001-D178-1C371D0019B0&language=en&text=politics&documentUri=SWC:1";
 }
