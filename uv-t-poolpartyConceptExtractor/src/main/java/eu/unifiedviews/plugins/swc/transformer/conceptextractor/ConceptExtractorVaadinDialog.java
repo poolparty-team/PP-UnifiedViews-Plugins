@@ -87,7 +87,7 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
         serverPort.setWidth("100%");
         serverPort.setRequired(true);
         serverPort.addValidator(new IntegerRangeValidator(ctx.tr("ConceptExtractor.dialog.error.serverPort"),
-                0, 65534));
+                0, 65535));
         mainLayout.addComponent(serverPort);
         mainLayout.setExpandRatio(serverPort, 0);
 
