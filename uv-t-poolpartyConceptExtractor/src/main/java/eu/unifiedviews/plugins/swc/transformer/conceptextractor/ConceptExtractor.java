@@ -7,8 +7,8 @@ import eu.unifiedviews.dpu.DPU;
 import eu.unifiedviews.dpu.DPUException;
 import eu.unifiedviews.helpers.dataunit.DataUnitUtils;
 import eu.unifiedviews.helpers.dataunit.rdf.RdfDataUnitUtils;
+import eu.unifiedviews.helpers.dpu.extension.faulttolerance.FaultToleranceUtils;
 import eu.unifiedviews.helpers.dpu.extension.rdf.simple.WritableSimpleRdf;
-import org.apache.commons.codec.Charsets;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
@@ -30,37 +30,35 @@ import org.apache.http.util.EntityUtils;
 import org.openrdf.model.*;
 import org.openrdf.model.impl.URIImpl;
 import org.openrdf.repository.RepositoryConnection;
-import org.openrdf.repository.RepositoryException;
 import org.openrdf.repository.RepositoryResult;
 import org.openrdf.rio.RDFFormat;
 import org.openrdf.rio.RDFParser;
 import org.openrdf.rio.Rio;
 import org.openrdf.rio.helpers.StatementCollector;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import eu.unifiedviews.helpers.dpu.config.ConfigHistory;
 import eu.unifiedviews.helpers.dpu.context.ContextUtils;
 import eu.unifiedviews.helpers.dpu.exec.AbstractDpu;
 import eu.unifiedviews.helpers.dpu.extension.ExtensionInitializer;
 import eu.unifiedviews.helpers.dpu.extension.faulttolerance.FaultTolerance;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 /**
  * Main data processing unit class.
  *
- * @author Unknown
+ * @author Yang Yuanzhe
  */
 @DPU.AsExtractor
 public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
 
     private static final Logger LOG = LoggerFactory.getLogger(ConceptExtractor.class);
 
-    public RepositoryResult<Statement> graphStatements = null;
-		
+    public Set<Statement> graphStatements = null;
+    public URI graphUri = null;
+
     @ExtensionInitializer.Init
     public FaultTolerance faultTolerance;
 
@@ -73,10 +71,10 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
     @ExtensionInitializer.Init(param = "output")
     public WritableSimpleRdf rdfWrapper;
 
-	public ConceptExtractor() {
-		super(ConceptExtractorVaadinDialog.class, ConfigHistory.noHistory(ConceptExtractorConfig_V1.class));
-	}
-		
+    public ConceptExtractor() {
+        super(ConceptExtractorVaadinDialog.class, ConfigHistory.noHistory(ConceptExtractorConfig_V1.class));
+    }
+
     @Override
     protected void innerExecute() throws DPUException {
         final RDFDataUnit.Entry outputEntry = faultTolerance.execute(new FaultTolerance.ActionReturn<RDFDataUnit.Entry>() {
@@ -88,49 +86,80 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         });
         rdfWrapper.setOutput(outputEntry);
 
-        ContextUtils.sendShortInfo(ctx, "Extraction start");
-        loadGraphStatements();
-        executeConceptExtraction();
+        ContextUtils.sendShortInfo(ctx, "Prepare for concept extraction");
+        final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, input, RDFDataUnit.Entry.class);
+        for (RDFDataUnit.Entry entry : entries) {
+            graphUri = FaultToleranceUtils.asGraph(faultTolerance, entry);
+            ContextUtils.sendShortInfo(ctx, "Start loading statements from graph " + graphUri.toString());
+            loadGraphStatements(graphUri);
+            ContextUtils.sendShortInfo(ctx, "Finish loading");
+            ContextUtils.sendShortInfo(ctx, "Start extracting objects from graph " + graphUri.toString());
+            executeConceptExtraction();
+            ContextUtils.sendShortInfo(ctx, "Finish extraction");
+        }
+        ContextUtils.sendShortInfo(ctx, "All extractions finished");
         rdfWrapper.flushBuffer();
     }
 
-    private void loadGraphStatements() throws DPUException {
+    private void loadGraphStatements(final URI graphUri) throws DPUException {
+        graphStatements = new HashSet<>();
+        /*try {
+            RepositoryConnection connection = input.getConnection();
+            RepositoryResult<Statement> repositoryResult = connection.getStatements(null, null, null, false, graphUri);
+            graphStatements.clear();
+            ContextUtils.sendShortInfo(ctx, "Reading statements");
+            while(repositoryResult.hasNext()) {
+                if (ctx.canceled()) {
+                    throw ContextUtils.dpuExceptionCancelled(ctx);
+                }
+                graphStatements.add(repositoryResult.next());
+            }
+            ContextUtils.sendShortInfo(ctx, "finish reading statements");
+            connection.close();
+        } catch (Exception e) {
+            throw new DPUException(e);
+        }*/
+
         faultTolerance.execute(input, new FaultTolerance.ConnectionAction() {
             @Override
             public void action(RepositoryConnection connection) throws Exception {
-                graphStatements = connection.getStatements(null, null, null, false);
+                RepositoryResult<Statement> repositoryResult = connection.getStatements(null, null, null, false, graphUri);
+                graphStatements.clear();
+                while (repositoryResult.hasNext()) {
+                    if (ctx.canceled()) {
+                        throw ContextUtils.dpuExceptionCancelled(ctx);
+                    }
+                    graphStatements.add(repositoryResult.next());
+                }
+
             }
         });
     }
 
     private void executeConceptExtraction() throws DPUException {
-        try {
-            if (graphStatements != null && graphStatements.hasNext()) {
-                String serviceUrl = config.getServiceRequestUrl();
-                HttpStateWrapper httpWrapper = createHttpStateWithAuth();
-                List<NameValuePair> nvps = new ArrayList<>();
-                nvps.add(new BasicNameValuePair("text", ""));
-                nvps.add(new BasicNameValuePair("documentUri", ""));
-                nvps.add(new BasicNameValuePair("projectId", config.getProjectId()));
-                nvps.add(new BasicNameValuePair("language", config.getLanguage()));
+        if (graphStatements != null && !graphStatements.isEmpty()) {
+            String serviceUrl = config.getServiceRequestUrl();
+            HttpStateWrapper httpWrapper = createHttpStateWithAuth();
+            List<NameValuePair> nvps = new ArrayList<>();
+            nvps.add(new BasicNameValuePair("text", ""));
+            nvps.add(new BasicNameValuePair("documentUri", ""));
+            nvps.add(new BasicNameValuePair("projectId", config.getProjectId()));
+            nvps.add(new BasicNameValuePair("language", config.getLanguage()));
 
-                String[] paramPairs = config.getUriSupplement().split("&");
-                for (String paramPair : paramPairs) {
-                    String[] keyValue = paramPair.split("=");
-                    if (keyValue.length == 2) {
-                        nvps.add(new BasicNameValuePair(keyValue[0], keyValue[1]));
-                    }
-                }
-
-                while (graphStatements.hasNext()) {
-                    if (ctx.canceled()) {
-                        throw ContextUtils.dpuExceptionCancelled(ctx);
-                    }
-                    extractSingleObject(graphStatements.next(), nvps, serviceUrl, httpWrapper);
+            String[] paramPairs = config.getUriSupplement().split("&");
+            for (String paramPair : paramPairs) {
+                String[] keyValue = paramPair.split("=");
+                if (keyValue.length == 2) {
+                    nvps.add(new BasicNameValuePair(keyValue[0], keyValue[1]));
                 }
             }
-        } catch (RepositoryException e) {
-            throw new DPUException(e);
+
+            for (Statement statement : graphStatements) {
+                if (ctx.canceled()) {
+                    throw ContextUtils.dpuExceptionCancelled(ctx);
+                }
+                extractSingleObject(statement, nvps, serviceUrl, httpWrapper);
+            }
         }
 
     }
@@ -141,13 +170,14 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         String predicateLocalName = statement.getPredicate().getLocalName();
         String text = statement.getObject().stringValue();
         URI tagPredicate = new URIImpl("http://schema.semantic-web.at/ppx/taggedResourceFor"
-                + predicateLocalName.charAt(0) + predicateLocalName.substring(1));
+                + Character.toUpperCase(predicateLocalName.charAt(0)) + predicateLocalName.substring(1));
         URI taggedResource = new URIImpl("http://schema.semantic-web.at/ppx/" + predicateLocalName + "/"
                 + UUID.randomUUID().toString() + "#id");
         nvps.set(0, new BasicNameValuePair("text", text));
         nvps.set(1, new BasicNameValuePair("documentUri", taggedResource.toString()));
 
         String rdf = requestExtractionService(serviceUrl, nvps, httpWrapper);
+        if (rdf == null) return;
         List<Statement> rdfExtractionResult = new ArrayList<>();
         RDFParser rdfParser = Rio.createParser(RDFFormat.RDFXML);
         rdfParser.setRDFHandler(new StatementCollector(rdfExtractionResult));
@@ -168,7 +198,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
             httpPost.setEntity(new UrlEncodedFormEntity(nvps));
             CloseableHttpResponse response = wrapper.client.execute(wrapper.host, httpPost, wrapper.context);
             if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
-                triples = EntityUtils.toString(response.getEntity(), Charsets.UTF_8);
+                triples = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             }
             response.close();
         } catch (Exception e) {
@@ -178,7 +208,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
     }
 
     private HttpStateWrapper createHttpStateWithAuth() {
-        HttpHost host = new HttpHost(config.getServerUrl(), config.getServerPort(), "http");
+        HttpHost host = new HttpHost(config.getHost(), Integer.parseInt(config.getPort()), "http");
         CredentialsProvider credsProvider = new BasicCredentialsProvider();
         credsProvider.setCredentials(
                 new AuthScope(host.getHostName(), host.getPort()),
