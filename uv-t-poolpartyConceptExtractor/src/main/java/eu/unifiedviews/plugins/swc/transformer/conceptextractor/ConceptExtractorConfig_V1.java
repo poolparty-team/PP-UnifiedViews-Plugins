@@ -6,11 +6,11 @@ package eu.unifiedviews.plugins.swc.transformer.conceptextractor;
  * @author Yang Yuanzhe
  */
 public class ConceptExtractorConfig_V1 {
-    private String serverUrl = "";
-    private int serverPort = 80;
+    private String host = "";
+    private String port = "80";
     private String projectId = "";
     private String uriSupplement = "";
-    private String language = "";
+    private String language = "en";
     private String extractorApi = "/extractor/api/annotate";
     private String username = "";
     private String password = "";
@@ -27,12 +27,12 @@ public class ConceptExtractorConfig_V1 {
         this.uriSupplement = uriSupplement;
     }
 
-    public String getServerUrl() {
-        return serverUrl;
+    public String getHost() {
+        return host;
     }
 
-    public void setServerUrl(String serverUrl) {
-        this.serverUrl = serverUrl;
+    public void setHost(String host) {
+        this.host = host;
     }
 
     public String getProjectId() {
@@ -59,16 +59,16 @@ public class ConceptExtractorConfig_V1 {
         this.extractorApi = extractorApi;
     }
 
-    public int getServerPort() {
-        return serverPort;
+    public String getPort() {
+        return port;
     }
 
-    public void setServerPort(int serverPort) {
-        this.serverPort = serverPort;
+    public void setPort(String port) {
+        this.port = port;
     }
 
     public String getServiceRequestUrl() {
-        return serverUrl + ":" + serverPort + extractorApi;
+        return "http://" + host + ":" + port + extractorApi;
     }
 
     public String getUsername() {

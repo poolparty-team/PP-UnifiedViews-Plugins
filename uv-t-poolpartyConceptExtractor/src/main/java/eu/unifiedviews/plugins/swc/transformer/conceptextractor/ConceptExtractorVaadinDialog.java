@@ -1,24 +1,22 @@
 package eu.unifiedviews.plugins.swc.transformer.conceptextractor;
 
-import com.vaadin.data.validator.IntegerRangeValidator;
+import com.vaadin.data.Validator;
 import com.vaadin.data.validator.StringLengthValidator;
-import com.vaadin.ui.Label;
 import com.vaadin.ui.PasswordField;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 
 import eu.unifiedviews.dpu.config.DPUConfigException;
 import eu.unifiedviews.helpers.dpu.vaadin.dialog.AbstractDialog;
-import eu.unifiedviews.helpers.dpu.vaadin.validator.UrlValidator;
 
 /**
  * Vaadin configuration dialog for ConceptExtractor.
  *
- * @author Unknown
+ * @author Yang Yuanzhe
  */
 public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtractorConfig_V1> {
-    private TextField serverUrl;
-    private TextField serverPort;
+    private TextField host;
+    private TextField port;
     private TextField projectId;
     private TextField uriSupplement;
     private TextField language;
@@ -32,8 +30,8 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
 
     @Override
     public void setConfiguration(ConceptExtractorConfig_V1 c) throws DPUConfigException {
-        serverUrl.setValue(c.getServerUrl());
-        serverPort.setValue(Integer.toString(c.getServerPort()));
+        host.setValue(c.getHost());
+        port.setValue(c.getPort());
         extractorApi.setValue(c.getExtractorApi());
         uriSupplement.setValue(c.getUriSupplement());
         projectId.setValue(c.getProjectId());
@@ -44,11 +42,11 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
 
     @Override
     public ConceptExtractorConfig_V1 getConfiguration() throws DPUConfigException {
-        if (!serverUrl.isValid()) {
-            throw new DPUConfigException(ctx.tr("ConceptExtractor.dialog.error.serverUrl"));
+        if (!host.isValid()) {
+            throw new DPUConfigException(ctx.tr("ConceptExtractor.dialog.error.host"));
         }
-        if (!serverPort.isValid()) {
-            throw new DPUConfigException(ctx.tr("ConceptExtractor.dialog.error.serverPort"));
+        if (!port.isValid()) {
+            throw new DPUConfigException(ctx.tr("ConceptExtractor.dialog.error.port"));
         }
         if (!extractorApi.isValid()) {
             throw new DPUConfigException(ctx.tr("ConceptExtractor.dialog.error.extractorApi"));
@@ -58,8 +56,8 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
         }
 
         final ConceptExtractorConfig_V1 c = new ConceptExtractorConfig_V1();
-        c.setServerUrl(serverUrl.getValue());
-        c.setServerPort(Integer.parseInt(serverPort.getValue()));
+        c.setHost(host.getValue());
+        c.setPort(port.getValue());
         c.setExtractorApi(extractorApi.getValue());
         c.setUriSupplement(uriSupplement.getValue());
         c.setProjectId(projectId.getValue());
@@ -76,20 +74,29 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
         mainLayout.setMargin(true);
         mainLayout.setSpacing(true);
 
-        serverUrl = new TextField(ctx.tr("ConceptExtractor.dialog.serverUrl"));
-        serverUrl.setWidth("100%");
-        serverUrl.setRequired(true);
-        serverUrl.addValidator(new UrlValidator(false));
-        mainLayout.addComponent(serverUrl);
-        mainLayout.setExpandRatio(serverUrl, 0);
+        host = new TextField(ctx.tr("ConceptExtractor.dialog.host"));
+        host.setWidth("100%");
+        host.setRequired(true);
+        mainLayout.addComponent(host);
 
-        serverPort = new TextField(ctx.tr("ConceptExtractor.dialog.serverPort"));
-        serverPort.setWidth("100%");
-        serverPort.setRequired(true);
-        serverPort.addValidator(new IntegerRangeValidator(ctx.tr("ConceptExtractor.dialog.error.serverPort"),
-                0, 65535));
-        mainLayout.addComponent(serverPort);
-        mainLayout.setExpandRatio(serverPort, 0);
+        port = new TextField(ctx.tr("ConceptExtractor.dialog.port"));
+        port.setWidth("100%");
+        port.setRequired(true);
+        port.addValidator(new Validator() {
+            @Override
+            public void validate(Object o) throws InvalidValueException {
+                int port = -1;
+                try {
+                    port = Integer.parseInt(o.toString());
+                } catch (Exception e) {
+                    throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.port"));
+                }
+                if (port < 0 || port > 65535) {
+                    throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.port"));
+                }
+            }
+        });
+        mainLayout.addComponent(port);
 
         extractorApi = new TextField(ctx.tr("ConceptExtractor.dialog.extractorApi"));
         extractorApi.setWidth("100%");
@@ -97,19 +104,16 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
         extractorApi.addValidator(new StringLengthValidator(ctx.tr("ConceptExtractor.dialog.error.extractorApi"),
                 8, null, false));
         mainLayout.addComponent(extractorApi);
-        mainLayout.setExpandRatio(extractorApi, 0);
 
         uriSupplement = new TextField(ctx.tr("ConceptExtractor.dialog.uriSupplement"));
         uriSupplement.setWidth("100%");
         uriSupplement.setRequired(false);
         mainLayout.addComponent(uriSupplement);
-        mainLayout.setExpandRatio(uriSupplement, 0);
 
         projectId = new TextField(ctx.tr("ConceptExtractor.dialog.projectId"));
         projectId.setWidth("100%");
         projectId.setRequired(true);
         mainLayout.addComponent(projectId);
-        mainLayout.setExpandRatio(projectId, 0);
 
         language = new TextField(ctx.tr("ConceptExtractor.dialog.language"));
         language.setWidth("100%");
@@ -117,19 +121,16 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
         language.addValidator(new StringLengthValidator(ctx.tr("ConceptExtractor.dialog.error.language"),
                 2, 2, false));
         mainLayout.addComponent(language);
-        mainLayout.setExpandRatio(language, 0);
 
         username = new TextField(ctx.tr("ConceptExtractor.dialog.username"));
         username.setWidth("100%");
         username.setRequired(true);
         mainLayout.addComponent(username);
-        mainLayout.setExpandRatio(username, 0);
 
         password = new PasswordField(ctx.tr("ConceptExtractor.dialog.password"));
         password.setWidth("100%");
         password.setRequired(true);
         mainLayout.addComponent(password);
-        mainLayout.setExpandRatio(password, 0);
 
         setCompositionRoot(mainLayout);
     }
