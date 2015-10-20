@@ -1,5 +1,10 @@
 package eu.unifiedviews.plugins.swc.transformer.conceptextractor;
 
+import org.apache.http.NameValuePair;
+
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Configuration class for ConceptExtractor.
  *
@@ -9,22 +14,17 @@ public class ConceptExtractorConfig_V1 {
     private String host = "";
     private String port = "80";
     private String projectId = "";
-    private String uriSupplement = "";
     private String language = "en";
     private String extractorApi = "/extractor/api/annotate";
     private String username = "";
     private String password = "";
+    private String numberOfConcepts = "";
+    private String numberOfTerms = "";
+    private String corpusScoring = "";
+    private List<String> booleanParams = new ArrayList<>();
 
     public ConceptExtractorConfig_V1() {
-
-    }
-
-    public String getUriSupplement() {
-        return uriSupplement;
-    }
-
-    public void setUriSupplement(String uriSupplement) {
-        this.uriSupplement = uriSupplement;
+        booleanParams.add("filterNestedConcepts");
     }
 
     public String getHost() {
@@ -85,5 +85,37 @@ public class ConceptExtractorConfig_V1 {
 
     public void setPassword(String password) {
         this.password = password;
+    }
+
+    public String getNumberOfTerms() {
+        return numberOfTerms;
+    }
+
+    public void setNumberOfTerms(String numberOfTerms) {
+        this.numberOfTerms = numberOfTerms;
+    }
+
+    public String getNumberOfConcepts() {
+        return numberOfConcepts;
+    }
+
+    public void setNumberOfConcepts(String numberOfConcepts) {
+        this.numberOfConcepts = numberOfConcepts;
+    }
+
+    public String getCorpusScoring() {
+        return corpusScoring;
+    }
+
+    public void setCorpusScoring(String corpusScoring) {
+        this.corpusScoring = corpusScoring;
+    }
+
+    public List<String> getBooleanParams() {
+        return booleanParams;
+    }
+
+    public void setBooleanParams(List<String> booleanParams) {
+        this.booleanParams = booleanParams;
     }
 }
