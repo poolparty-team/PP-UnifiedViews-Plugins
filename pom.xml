@@ -22,6 +22,7 @@
         <module>uv-e-thesaurusLinker</module>
         <module>uv-l-thesaurusImporter</module>
         <module>uv-e-poolpartyExtractor</module>
+        <module>uv-t-poolpartyConceptExtractor</module>
     </modules>
 
     <properties>
