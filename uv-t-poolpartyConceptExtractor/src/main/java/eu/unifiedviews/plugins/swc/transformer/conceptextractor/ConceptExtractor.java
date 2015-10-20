@@ -51,14 +51,14 @@ import java.util.*;
  *
  * @author Yang Yuanzhe
  */
-@DPU.AsExtractor
+@DPU.AsTransformer
 public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
-
+    private static final String PPX_NS = "http://schema.semantic-web.at/ppx/";
     private static final Logger LOG = LoggerFactory.getLogger(ConceptExtractor.class);
 
     public Set<Statement> graphStatements = null;
     public URI graphUri = null;
-
+		
     @ExtensionInitializer.Init
     public FaultTolerance faultTolerance;
 
@@ -71,10 +71,14 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
     @ExtensionInitializer.Init(param = "output")
     public WritableSimpleRdf rdfWrapper;
 
-    public ConceptExtractor() {
-        super(ConceptExtractorVaadinDialog.class, ConfigHistory.noHistory(ConceptExtractorConfig_V1.class));
-    }
+	public ConceptExtractor() {
+		super(ConceptExtractorVaadinDialog.class, ConfigHistory.noHistory(ConceptExtractorConfig_V1.class));
+	}
 
+    /**
+     * DPU execution entrypoint
+     * @throws DPUException
+     */
     @Override
     protected void innerExecute() throws DPUException {
         final RDFDataUnit.Entry outputEntry = faultTolerance.execute(new FaultTolerance.ActionReturn<RDFDataUnit.Entry>() {
@@ -101,25 +105,13 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         rdfWrapper.flushBuffer();
     }
 
+    /**
+     * Read all the statements in the given graph
+     * @param graphUri URI of the graph
+     * @throws DPUException
+     */
     private void loadGraphStatements(final URI graphUri) throws DPUException {
         graphStatements = new HashSet<>();
-        /*try {
-            RepositoryConnection connection = input.getConnection();
-            RepositoryResult<Statement> repositoryResult = connection.getStatements(null, null, null, false, graphUri);
-            graphStatements.clear();
-            ContextUtils.sendShortInfo(ctx, "Reading statements");
-            while(repositoryResult.hasNext()) {
-                if (ctx.canceled()) {
-                    throw ContextUtils.dpuExceptionCancelled(ctx);
-                }
-                graphStatements.add(repositoryResult.next());
-            }
-            ContextUtils.sendShortInfo(ctx, "finish reading statements");
-            connection.close();
-        } catch (Exception e) {
-            throw new DPUException(e);
-        }*/
-
         faultTolerance.execute(input, new FaultTolerance.ConnectionAction() {
             @Override
             public void action(RepositoryConnection connection) throws Exception {
@@ -136,6 +128,10 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         });
     }
 
+    /**
+     * Execute concept extraction for objects of all statements in the current graph
+     * @throws DPUException
+     */
     private void executeConceptExtraction() throws DPUException {
         if (graphStatements != null && !graphStatements.isEmpty()) {
             String serviceUrl = config.getServiceRequestUrl();
@@ -145,13 +141,21 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
             nvps.add(new BasicNameValuePair("documentUri", ""));
             nvps.add(new BasicNameValuePair("projectId", config.getProjectId()));
             nvps.add(new BasicNameValuePair("language", config.getLanguage()));
+            for (String param : config.getBooleanParams()) {
+                nvps.add(new BasicNameValuePair(param, "true"));
+            }
+            if (!config.getNumberOfConcepts().equals("")) {
+                nvps.add(new BasicNameValuePair("numberOfConcepts", config.getNumberOfConcepts()));
+            }
+            if (!config.getNumberOfTerms().equals("")) {
+                nvps.add(new BasicNameValuePair("numberOfTerms", config.getNumberOfTerms()));
+            }
+            if (!config.getCorpusScoring().equals("")) {
+                nvps.add(new BasicNameValuePair("corpusScoring", config.getCorpusScoring()));
+            }
 
-            String[] paramPairs = config.getUriSupplement().split("&");
-            for (String paramPair : paramPairs) {
-                String[] keyValue = paramPair.split("=");
-                if (keyValue.length == 2) {
-                    nvps.add(new BasicNameValuePair(keyValue[0], keyValue[1]));
-                }
+            for (NameValuePair nvp : nvps) {
+                LOG.info("Extraction parameters: " + nvp.toString());
             }
 
             for (Statement statement : graphStatements) {
@@ -164,25 +168,43 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
 
     }
 
+    /**
+     * Extract concepts from the object of the given RDF statement and write result to output
+     * @param statement an RDF statement of which the object should be extracted
+     * @param nvps request parameters used in the HTTP requests
+     * @param serviceUrl URL of concept extraction service
+     * @param httpWrapper wrapped HTTP state used for requests
+     * @throws DPUException
+     */
     private void extractSingleObject(Statement statement, List<NameValuePair> nvps, String serviceUrl,
                                      HttpStateWrapper httpWrapper) throws DPUException {
+        Value object = statement.getObject();
+        if (object instanceof Literal) {
+            if (!(((Literal) object).getDatatype().getLocalName().equals("string"))) {
+                return;
+            }
+        } else {
+            return;
+        }
+        String text = object.stringValue();
+
         Resource subject = statement.getSubject();
         String predicateLocalName = statement.getPredicate().getLocalName();
-        String text = statement.getObject().stringValue();
-        URI tagPredicate = new URIImpl("http://schema.semantic-web.at/ppx/taggedResourceFor"
-                + Character.toUpperCase(predicateLocalName.charAt(0)) + predicateLocalName.substring(1));
-        URI taggedResource = new URIImpl("http://schema.semantic-web.at/ppx/" + predicateLocalName + "/"
+        URI tagPredicate = new URIImpl(PPX_NS + predicateLocalName + "IsTaggedBy");
+        URI taggedResource = new URIImpl(PPX_NS + predicateLocalName + "/"
                 + UUID.randomUUID().toString() + "#id");
         nvps.set(0, new BasicNameValuePair("text", text));
         nvps.set(1, new BasicNameValuePair("documentUri", taggedResource.toString()));
 
         String rdf = requestExtractionService(serviceUrl, nvps, httpWrapper);
-        if (rdf == null) return;
+        if (rdf == null) {
+            return;
+        }
         List<Statement> rdfExtractionResult = new ArrayList<>();
         RDFParser rdfParser = Rio.createParser(RDFFormat.RDFXML);
         rdfParser.setRDFHandler(new StatementCollector(rdfExtractionResult));
         try {
-            rdfParser.parse(new StringReader(rdf), "http://schema.semantic-web.at/ppx/");
+            rdfParser.parse(new StringReader(rdf), PPX_NS);
         } catch (Exception e) {
             throw new DPUException(e);
         }
@@ -191,6 +213,14 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         rdfWrapper.add(subject, tagPredicate, taggedResource);
     }
 
+    /**
+     * Issue an HTTP post request to the concept extraction service for a result in RDF/XML format
+     * @param serviceUrl URL of concept extraction service
+     * @param nvps Name-value pairs of request parameters
+     * @param wrapper Wrapped HTTP state used for requests
+     * @return extraction result as an RDF/XML document deserialized to string
+     * @throws DPUException
+     */
     private String requestExtractionService(String serviceUrl, List<NameValuePair> nvps, HttpStateWrapper wrapper) throws DPUException {
         String triples = null;
         try {
@@ -207,6 +237,10 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         return triples;
     }
 
+    /**
+     * Create an HTTP state after authentication with credentials for future requests
+     * @return a class wrapping HTTP host, client and context used for future requests
+     */
     private HttpStateWrapper createHttpStateWithAuth() {
         HttpHost host = new HttpHost(config.getHost(), Integer.parseInt(config.getPort()), "http");
         CredentialsProvider credsProvider = new BasicCredentialsProvider();
@@ -224,6 +258,9 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         return new HttpStateWrapper(host, httpclient, localContext);
     }
 
+    /**
+     * A class to wrap HTTP states after authentication
+     */
     private class HttpStateWrapper {
         private HttpHost host;
         private CloseableHttpClient client;
