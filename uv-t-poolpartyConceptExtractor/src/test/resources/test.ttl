@@ -1,0 +1,5 @@
+<http://example.org> <http://example.org/text> "government" ;
+  <http://example.org#title> "organization" ;
+  <http://example.org#invalidText> <http://example.org/uri> ;
+  <http://example.org#invalidText> 12345 ;
+  <http://example.org#invalidText> "2012-05-16T16:29:00Z"^^<http://www.w3.org/2001/XMLSchema#datetime> .
