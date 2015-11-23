@@ -1,12 +1,16 @@
 package eu.unifiedviews.plugins.swc.transformer.conceptextractor;
 
 import eu.unifiedviews.dataunit.DataUnit;
+import eu.unifiedviews.dataunit.DataUnitException;
+import eu.unifiedviews.dataunit.files.FilesDataUnit;
 import eu.unifiedviews.dataunit.rdf.RDFDataUnit;
 import eu.unifiedviews.dataunit.rdf.WritableRDFDataUnit;
 import eu.unifiedviews.dpu.DPU;
 import eu.unifiedviews.dpu.DPUException;
 import eu.unifiedviews.helpers.dataunit.DataUnitUtils;
+import eu.unifiedviews.helpers.dataunit.files.FilesHelper;
 import eu.unifiedviews.helpers.dataunit.rdf.RdfDataUnitUtils;
+import eu.unifiedviews.helpers.dataunit.virtualpath.VirtualPathHelpers;
 import eu.unifiedviews.helpers.dpu.extension.faulttolerance.FaultToleranceUtils;
 import eu.unifiedviews.helpers.dpu.extension.rdf.simple.WritableSimpleRdf;
 import org.apache.http.HttpHost;
@@ -20,6 +24,11 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.entity.ContentType;
+import org.apache.http.entity.FileEntity;
+import org.apache.http.entity.InputStreamEntity;
+import org.apache.http.entity.mime.HttpMultipartMode;
+import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicAuthCache;
 import org.apache.http.impl.client.BasicCredentialsProvider;
@@ -42,6 +51,10 @@ import eu.unifiedviews.helpers.dpu.extension.ExtensionInitializer;
 import eu.unifiedviews.helpers.dpu.extension.faulttolerance.FaultTolerance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -57,6 +70,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
     private static final Logger LOG = LoggerFactory.getLogger(ConceptExtractor.class);
 
     public Set<Statement> graphStatements = null;
+    public HashMap<String, String> filenameUriMappings = null;
     public URI graphUri = null;
 		
     @ExtensionInitializer.Init
@@ -64,6 +78,9 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
 
     @DataUnit.AsInput(name = "input")
     public RDFDataUnit input;
+
+    @DataUnit.AsInput(name = "fileInput", optional = true)
+    public FilesDataUnit fileInput;
 
     @DataUnit.AsOutput(name = "output")
     public WritableRDFDataUnit output;
@@ -92,15 +109,27 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
 
         ContextUtils.sendShortInfo(ctx, "Prepare for concept extraction");
         final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, input, RDFDataUnit.Entry.class);
-        for (RDFDataUnit.Entry entry : entries) {
-            graphUri = FaultToleranceUtils.asGraph(faultTolerance, entry);
-            ContextUtils.sendShortInfo(ctx, "Start loading statements from graph " + graphUri.toString());
-            loadGraphStatements(graphUri);
-            ContextUtils.sendShortInfo(ctx, "Finish loading");
-            ContextUtils.sendShortInfo(ctx, "Start extracting objects from graph " + graphUri.toString());
-            executeConceptExtraction();
-            ContextUtils.sendShortInfo(ctx, "Finish extraction");
+        if (fileInput == null) {
+            for (RDFDataUnit.Entry entry : entries) {
+                graphUri = FaultToleranceUtils.asGraph(faultTolerance, entry);
+                ContextUtils.sendShortInfo(ctx, "Start loading statements from graph " + graphUri.toString());
+                loadGraphStatements(graphUri);
+                ContextUtils.sendShortInfo(ctx, "Finish loading");
+                ContextUtils.sendShortInfo(ctx, "Start extracting objects from graph " + graphUri.toString());
+                executeConceptExtraction();
+                ContextUtils.sendShortInfo(ctx, "Finish extraction");
+            }
+        } else {
+            if (entries.size() != 1) {
+                throw new DPUException("Concept extraction on files must be provided with one file input and one RDF " +
+                        "input denoting file URIs");
+            }
+            final List<FilesDataUnit.Entry> fileEntries = FaultToleranceUtils.getEntries(faultTolerance, fileInput, FilesDataUnit.Entry.class);
+            graphUri = FaultToleranceUtils.asGraph(faultTolerance, entries.get(0));
+            loadFilenameUriMappings(graphUri);
+            executeFileConceptExtraction(fileEntries);
         }
+
         ContextUtils.sendShortInfo(ctx, "All extractions finished");
         rdfWrapper.flushBuffer();
     }
@@ -122,6 +151,25 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                         throw ContextUtils.dpuExceptionCancelled(ctx);
                     }
                     graphStatements.add(repositoryResult.next());
+                }
+
+            }
+        });
+    }
+
+    private void loadFilenameUriMappings(final URI graphUri) throws DPUException {
+        filenameUriMappings = new HashMap<>();
+        faultTolerance.execute(input, new FaultTolerance.ConnectionAction() {
+            @Override
+            public void action(RepositoryConnection connection) throws Exception {
+                RepositoryResult<Statement> repositoryResult = connection.getStatements(null, null, null, false, graphUri);
+                filenameUriMappings.clear();
+                while (repositoryResult.hasNext()) {
+                    if (ctx.canceled()) {
+                        throw ContextUtils.dpuExceptionCancelled(ctx);
+                    }
+                    Statement filenameStmt = repositoryResult.next();
+                    filenameUriMappings.put(filenameStmt.getObject().stringValue(), filenameStmt.getSubject().stringValue());
                 }
 
             }
@@ -166,6 +214,50 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
             }
         }
 
+    }
+
+    private void executeFileConceptExtraction(List<FilesDataUnit.Entry> fileEntries) throws DPUException {
+        if (filenameUriMappings != null && !filenameUriMappings.isEmpty()) {
+            String serviceUrl = config.getServiceRequestUrl();
+            HttpStateWrapper httpWrapper = createHttpStateWithAuth();
+            List<NameValuePair> nvps = new ArrayList<>();
+            nvps.add(new BasicNameValuePair("documentUri", ""));
+            nvps.add(new BasicNameValuePair("projectId", config.getProjectId()));
+            nvps.add(new BasicNameValuePair("language", config.getLanguage()));
+            for (String param : config.getBooleanParams()) {
+                nvps.add(new BasicNameValuePair(param, "true"));
+            }
+            if (!config.getNumberOfConcepts().equals("")) {
+                nvps.add(new BasicNameValuePair("numberOfConcepts", config.getNumberOfConcepts()));
+            }
+            if (!config.getNumberOfTerms().equals("")) {
+                nvps.add(new BasicNameValuePair("numberOfTerms", config.getNumberOfTerms()));
+            }
+            if (!config.getCorpusScoring().equals("")) {
+                nvps.add(new BasicNameValuePair("corpusScoring", config.getCorpusScoring()));
+            }
+
+            for (NameValuePair nvp : nvps) {
+                LOG.info("Extraction parameters: " + nvp.toString());
+            }
+
+
+            for (FilesDataUnit.Entry entry : fileEntries) {
+                if (ctx.canceled()) {
+                    throw ContextUtils.dpuExceptionCancelled(ctx);
+                }
+                try {
+                    String filename = entry.getSymbolicName();
+                    String uri = filenameUriMappings.get(filename);
+                    if (uri == null) {
+                        LOG.warn("Unable to find URI for file: " + filename);
+                        continue;
+                    }
+                    extractSingleFile(FilesHelper.asFile(entry), uri, nvps, serviceUrl, httpWrapper);
+                } catch (DataUnitException e) {}
+                //extractSingleObject(file, nvps, serviceUrl, httpWrapper);
+            }
+        }
     }
 
     /**
@@ -213,6 +305,31 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         rdfWrapper.add(subject, tagPredicate, taggedResource);
     }
 
+    private void extractSingleFile(File file, String uri, List<NameValuePair> nvps, String serviceUrl,
+                                     HttpStateWrapper httpWrapper) throws DPUException {
+
+        URI tagPredicate = new URIImpl(PPX_NS + "isTaggedBy");
+        URI taggedResource = new URIImpl(PPX_NS + "tag/"
+                + UUID.randomUUID().toString() + "#id");
+        nvps.set(0, new BasicNameValuePair("documentUri", uri));
+
+        String rdf = requestFileExtractionService(serviceUrl, nvps, file, httpWrapper);
+        if (rdf == null) {
+            return;
+        }
+        List<Statement> rdfExtractionResult = new ArrayList<>();
+        RDFParser rdfParser = Rio.createParser(RDFFormat.RDFXML);
+        rdfParser.setRDFHandler(new StatementCollector(rdfExtractionResult));
+        try {
+            rdfParser.parse(new StringReader(rdf), PPX_NS);
+        } catch (Exception e) {
+            throw new DPUException(e);
+        }
+
+        rdfWrapper.add(rdfExtractionResult);
+        rdfWrapper.add(new URIImpl(uri), tagPredicate, taggedResource);
+    }
+
     /**
      * Issue an HTTP post request to the concept extraction service for a result in RDF/XML format
      * @param serviceUrl URL of concept extraction service
@@ -226,6 +343,28 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         try {
             HttpPost httpPost = new HttpPost(serviceUrl);
             httpPost.setEntity(new UrlEncodedFormEntity(nvps));
+            CloseableHttpResponse response = wrapper.client.execute(wrapper.host, httpPost, wrapper.context);
+            if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
+                triples = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+            }
+            response.close();
+        } catch (Exception e) {
+            throw new DPUException(e);
+        }
+        return triples;
+    }
+
+    private String requestFileExtractionService(String serviceUrl, List<NameValuePair> nvps, File file, HttpStateWrapper wrapper) throws DPUException {
+        String triples = null;
+        MultipartEntityBuilder builder = MultipartEntityBuilder.create();
+        try {
+            HttpPost httpPost = new HttpPost(serviceUrl);
+            for (NameValuePair nvp : nvps) {
+                builder.addTextBody(nvp.getName(), nvp.getValue());
+            }
+            builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
+            builder.addBinaryBody("file", file, ContentType.DEFAULT_BINARY, file.getName());
+            httpPost.setEntity(builder.build());
             CloseableHttpResponse response = wrapper.client.execute(wrapper.host, httpPost, wrapper.context);
             if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
                 triples = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
