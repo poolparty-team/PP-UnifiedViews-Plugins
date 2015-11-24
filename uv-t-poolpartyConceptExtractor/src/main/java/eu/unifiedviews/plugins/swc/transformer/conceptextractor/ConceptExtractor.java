@@ -206,11 +206,19 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                 LOG.info("Extraction parameters: " + nvp.toString());
             }
 
+            int graphSize = graphStatements.size();
+            int blockSize = graphSize/10 > 0 ? graphSize/10 : 1;
+            int counter = 0;
             for (Statement statement : graphStatements) {
                 if (ctx.canceled()) {
                     throw ContextUtils.dpuExceptionCancelled(ctx);
                 }
                 extractSingleObject(statement, nvps, serviceUrl, httpWrapper);
+                counter++;
+                if (counter >= blockSize) {
+                    blockSize += blockSize;
+                    LOG.info("Extracted " + counter + " of " + graphSize);
+                }
             }
         }
 
@@ -241,7 +249,9 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                 LOG.info("Extraction parameters: " + nvp.toString());
             }
 
-
+            int fileSize = fileEntries.size();
+            int blockSize = fileSize/10 > 0 ? fileSize/10 : 1;
+            int counter = 0;
             for (FilesDataUnit.Entry entry : fileEntries) {
                 if (ctx.canceled()) {
                     throw ContextUtils.dpuExceptionCancelled(ctx);
@@ -254,8 +264,12 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                         continue;
                     }
                     extractSingleFile(FilesHelper.asFile(entry), uri, nvps, serviceUrl, httpWrapper);
+                    counter++;
+                    if (counter >= blockSize) {
+                        blockSize += blockSize;
+                        LOG.info("Extracted " + counter + " of " + fileSize);
+                    }
                 } catch (DataUnitException e) {}
-                //extractSingleObject(file, nvps, serviceUrl, httpWrapper);
             }
         }
     }
@@ -298,6 +312,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         try {
             rdfParser.parse(new StringReader(rdf), PPX_NS);
         } catch (Exception e) {
+            LOG.error("Encountered error extracting text: " + text);
             throw new DPUException(e);
         }
 
