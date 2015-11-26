@@ -163,6 +163,11 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         });
     }
 
+    /**
+     * Read filename to URI mappings from the given graph
+     * @param graphUri URI of the graph
+     * @throws DPUException
+     */
     private void loadFilenameUriMappings(final URI graphUri) throws DPUException {
         filenameUriMappings = new HashMap<>();
         faultTolerance.execute(rdfInput, new FaultTolerance.ConnectionAction() {
@@ -183,7 +188,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
     }
 
     /**
-     * Execute concept extraction for objects of all statements in the current graph
+     * Execute concept extraction for files or string literals in the RDF statements
      * @throws DPUException
      */
     private void executeConceptExtraction(String serviceUrl, HttpStateWrapper httpWrapper) throws DPUException {
@@ -299,6 +304,14 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         rdfWrapper.add(subject, tagPredicate, taggedResource);
     }
 
+    /**
+     * Extract concepts from the given file and write result to output
+     * @param file the file to be extracted
+     * @param uri resource identifier of the given file
+     * @param serviceUrl URL of concept extraction service
+     * @param httpWrapper wrapped HTTP state used for requests
+     * @throws DPUException
+     */
     private void extractSingleFile(File file, String uri, String serviceUrl,
                                      HttpStateWrapper httpWrapper) throws DPUException {
         MultipartEntityBuilder builder = createMultipartEntityBuilder();
@@ -388,6 +401,11 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         }
     }
 
+    /**
+     * Create a multipart entity builder with the given request parameters
+     * TODO: MultipartEntityBuilder provided by Apache HTTP Client is not mutable or cloneable, therefore the HTTP entity has to be build from scratch every time
+     * @return MultipartEntityBuilder
+     */
     private MultipartEntityBuilder createMultipartEntityBuilder() {
         MultipartEntityBuilder entityBuilder = MultipartEntityBuilder.create();
         entityBuilder.addTextBody("projectId", config.getProjectId());

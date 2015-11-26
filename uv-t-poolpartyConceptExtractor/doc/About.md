@@ -31,8 +31,11 @@ PoolParty Concept Extractor is a plugin for UnifiedViews to consume the Concept 
 
 |Name |Type | DataUnit | Description | Mandatory |
 |:--------|:------:|:------:|:-------------|:---------------------:|
-|input|i|RDFDataUnit|RDF input where the object of each triple must be a string literal representing the text to be annotated|x|
-|output|o|RDFDataUnit|RDF output where a graph of annotated concepts and terms is created for each triple from the input|x|
+|rdfInput|i|RDFDataUnit|RDF input where the object of each triple must be a string literal representing the text to be annotated| |
+|fileInput|i|FilesDataUnit|Files input where a list of files containing the texts to be annotated| |
+|rdfOutput|o|RDFDataUnit|RDF output where a graph of annotated concepts and terms is created for each triple from the input|x|
+
+If input data are files, then one single graph of RDF triples with subjects representing resource URIs and objects representing filenames in string literals should also be provided as input data to link annotations to the resource URI of files. Otherwise, the URIs will be created automatically.
 
 ### Example
 
