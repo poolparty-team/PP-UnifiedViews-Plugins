@@ -114,21 +114,6 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         ContextUtils.sendShortInfo(ctx, "Prepare for concept extraction");
         String serviceUrl = config.getServiceRequestUrl();
         HttpStateWrapper httpWrapper = createHttpStateWithAuth();
-        MultipartEntityBuilder entityBuilder = MultipartEntityBuilder.create();
-        entityBuilder.addTextBody("projectId", config.getProjectId());
-        entityBuilder.addTextBody("language", config.getLanguage());
-        for (String param : config.getBooleanParams()) {
-            entityBuilder.addTextBody(param, "true");
-        }
-        if (!config.getNumberOfConcepts().equals("")) {
-            entityBuilder.addTextBody("numberOfConcepts", config.getNumberOfConcepts());
-        }
-        if (!config.getNumberOfTerms().equals("")) {
-            entityBuilder.addTextBody("numberOfTerms", config.getNumberOfTerms());
-        }
-        if (!config.getCorpusScoring().equals("")) {
-            entityBuilder.addTextBody("corpusScoring", config.getCorpusScoring());
-        }
 
         if (fileInput == null && input != null) {
             final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, input, RDFDataUnit.Entry.class);
@@ -138,7 +123,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                 loadGraphStatements(graphUri);
                 ContextUtils.sendShortInfo(ctx, "Finish loading");
                 ContextUtils.sendShortInfo(ctx, "Start extracting objects from graph " + graphUri.toString());
-                executeConceptExtraction(serviceUrl, httpWrapper, entityBuilder);
+                executeConceptExtraction(serviceUrl, httpWrapper);
                 ContextUtils.sendShortInfo(ctx, "Finish extraction");
             }
         } else {
@@ -155,7 +140,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                 }
             }
             ContextUtils.sendShortInfo(ctx, "Start extracting files");
-            executeConceptExtraction(serviceUrl, httpWrapper, entityBuilder);
+            executeConceptExtraction(serviceUrl, httpWrapper);
             ContextUtils.sendShortInfo(ctx, "Finish extraction");
         }
 
@@ -209,8 +194,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
      * Execute concept extraction for objects of all statements in the current graph
      * @throws DPUException
      */
-    private void executeConceptExtraction(String serviceUrl, HttpStateWrapper httpWrapper, MultipartEntityBuilder builder) throws DPUException {
-        MultipartEntityBuilder builder1 = builder;
+    private void executeConceptExtraction(String serviceUrl, HttpStateWrapper httpWrapper) throws DPUException {
         if (graphStatements != null && !graphStatements.isEmpty()) {
             int graphSize = graphStatements.size();
             int blockSize = graphSize/10 > 0 ? graphSize/10 : 1;
@@ -220,7 +204,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                 if (ctx.canceled()) {
                     throw ContextUtils.dpuExceptionCancelled(ctx);
                 }
-                extractSingleObject(statement, builder1, serviceUrl, httpWrapper);
+                extractSingleObject(statement, serviceUrl, httpWrapper);
                 index++;
                 if (index >= reportIndex) {
                     reportIndex += blockSize;
@@ -245,7 +229,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                             LOG.warn("Unable to find URI for file: " + filename);
                             continue;
                         }
-                        extractSingleFile(FilesHelper.asFile(entry), uri, builder1, serviceUrl, httpWrapper);
+                        extractSingleFile(FilesHelper.asFile(entry), uri, serviceUrl, httpWrapper);
                         index++;
                         if (index >= reportIndex) {
                             reportIndex += blockSize;
@@ -263,7 +247,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                     try {
                         extractSingleFile(FilesHelper.asFile(entry),
                                 PPX_NS + "document/" + UUID.randomUUID().toString() + "#id",
-                                builder1, serviceUrl, httpWrapper);
+                                serviceUrl, httpWrapper);
                         index++;
                         if (index >= reportIndex) {
                             reportIndex += blockSize;
@@ -280,13 +264,13 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
     /**
      * Extract concepts from the object of the given RDF statement and write result to output
      * @param statement an RDF statement of which the object should be extracted
-     * @param builder entity builder with request parameters
      * @param serviceUrl URL of concept extraction service
      * @param httpWrapper wrapped HTTP state used for requests
      * @throws DPUException
      */
-    private void extractSingleObject(Statement statement, MultipartEntityBuilder builder, String serviceUrl,
+    private void extractSingleObject(Statement statement, String serviceUrl,
                                      HttpStateWrapper httpWrapper) throws DPUException {
+        MultipartEntityBuilder builder = createMultipartEntityBuilder();
         Value object = statement.getObject();
         if (object instanceof Literal) {
             if (!(((Literal) object).getDatatype().getLocalName().equals("string"))) {
@@ -323,8 +307,9 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         rdfWrapper.add(subject, tagPredicate, taggedResource);
     }
 
-    private void extractSingleFile(File file, String uri, MultipartEntityBuilder builder, String serviceUrl,
+    private void extractSingleFile(File file, String uri, String serviceUrl,
                                      HttpStateWrapper httpWrapper) throws DPUException {
+        MultipartEntityBuilder builder = createMultipartEntityBuilder();
         builder.addTextBody("documentUri", uri);
 
         String rdf = requestExtractionService(serviceUrl, httpWrapper, builder, file);
@@ -409,6 +394,25 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
             this.client = client;
             this.context = context;
         }
+    }
+
+    private MultipartEntityBuilder createMultipartEntityBuilder() {
+        MultipartEntityBuilder entityBuilder = MultipartEntityBuilder.create();
+        entityBuilder.addTextBody("projectId", config.getProjectId());
+        entityBuilder.addTextBody("language", config.getLanguage());
+        for (String param : config.getBooleanParams()) {
+            entityBuilder.addTextBody(param, "true");
+        }
+        if (!config.getNumberOfConcepts().equals("")) {
+            entityBuilder.addTextBody("numberOfConcepts", config.getNumberOfConcepts());
+        }
+        if (!config.getNumberOfTerms().equals("")) {
+            entityBuilder.addTextBody("numberOfTerms", config.getNumberOfTerms());
+        }
+        if (!config.getCorpusScoring().equals("")) {
+            entityBuilder.addTextBody("corpusScoring", config.getCorpusScoring());
+        }
+        return entityBuilder;
     }
 
 
