@@ -21,6 +21,7 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.mime.HttpMultipartMode;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
@@ -48,6 +49,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -243,14 +246,14 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                     }
                     try {
                         extractSingleFile(FilesHelper.asFile(entry),
-                                PPX_NS + "document/" + UUID.randomUUID().toString() + "#id",
+                                PPX_NS + "document/" + URLEncoder.encode(entry.getSymbolicName(), "UTF-8"),
                                 serviceUrl, httpWrapper);
                         index++;
                         if (index >= reportIndex) {
                             reportIndex += blockSize;
                             LOG.info("Extracted " + index + " of " + fileSize + " files");
                         }
-                    } catch (DataUnitException e) {
+                    } catch (DataUnitException | UnsupportedEncodingException e) {
                         LOG.warn("Unable to read the file from files data unit entry", e);
                     }
                 }
@@ -282,7 +285,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         String predicateLocalName = statement.getPredicate().getLocalName();
         URI tagPredicate = new URIImpl(PPX_NS + predicateLocalName + "IsTaggedBy");
         URI taggedResource = new URIImpl(PPX_NS + predicateLocalName + "/"
-                + UUID.randomUUID().toString() + "#id");
+                + UUID.randomUUID().toString());
         builder.addTextBody("text", text);
         builder.addTextBody("documentUri", taggedResource.toString());
 
