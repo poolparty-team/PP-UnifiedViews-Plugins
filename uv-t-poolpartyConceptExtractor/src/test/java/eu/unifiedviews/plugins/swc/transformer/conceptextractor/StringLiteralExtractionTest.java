@@ -23,7 +23,7 @@ import java.util.Properties;
 /**
  * Created by yyz on 15/10/15.
  */
-public class DpuTest {
+public class StringLiteralExtractionTest {
     private static ConceptExtractor extractor;
     private static TestEnvironment env;
     private static WritableRDFDataUnit output;

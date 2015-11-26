@@ -1,7 +1,6 @@
 package eu.unifiedviews.plugins.swc.transformer.conceptextractor;
 
 import cz.cuni.mff.xrg.odcs.dpu.test.TestEnvironment;
-import eu.unifiedviews.dataunit.files.FilesDataUnit;
 import eu.unifiedviews.dataunit.files.WritableFilesDataUnit;
 import eu.unifiedviews.dataunit.rdf.WritableRDFDataUnit;
 import eu.unifiedviews.helpers.dataunit.rdf.RDFHelper;
@@ -26,9 +25,9 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- * Created by yyz on 23/11/15.
+ * Created by yyz on 26/11/15.
  */
-public class FileExtractionTest {
+public class FileWithoutUriExtractionTest {
     private static ConceptExtractor extractor;
     private static TestEnvironment env;
     private static WritableRDFDataUnit output;
@@ -43,19 +42,8 @@ public class FileExtractionTest {
         extractor = new ConceptExtractor();
         env = new TestEnvironment();
 
-        input = env.createRdfInput("input", false);
         fileInput = env.createFilesInput("fileInput");
         output = env.createRdfOutput("output", false);
-
-        InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream("file.ttl");
-
-        connection = input.getConnection();
-        URI graph = input.addNewDataGraph("test");
-        connection.add(inputStream, "", RDFFormat.TURTLE, graph);
-        ByteArrayOutputStream inputBos = new ByteArrayOutputStream();
-        connection.export(new TurtleWriter(inputBos), graph);
-
-        Assert.assertTrue(connection.size(graph) > 0);
 
         File inputFile = new File(java.net.URI.create(fileInput.addNewFile("file1.txt")));
         try (FileOutputStream fout = new FileOutputStream(inputFile)) {
@@ -105,9 +93,9 @@ public class FileExtractionTest {
         extractor.configure((new ConfigurationBuilder()).setDpuConfiguration(config).toString());
         env.run(extractor);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        connection = output.getConnection();
         connection.export(new TurtleWriter(outputStream), RDFHelper.getGraphsURIArray(output));
         Assert.assertTrue(outputStream.size() > 0);
         System.out.println(outputStream.toString());
     }
-
 }
