@@ -36,8 +36,8 @@ public class StringLiteralExtractionTest {
     public static void before() throws Exception {
         extractor = new ConceptExtractor();
         env = new TestEnvironment();
-        input = env.createRdfInput("input", false);
-        output = env.createRdfOutput("output", false);
+        input = env.createRdfInput("rdfInput", false);
+        output = env.createRdfOutput("rdfOutput", false);
 
         InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream("test.ttl");
 

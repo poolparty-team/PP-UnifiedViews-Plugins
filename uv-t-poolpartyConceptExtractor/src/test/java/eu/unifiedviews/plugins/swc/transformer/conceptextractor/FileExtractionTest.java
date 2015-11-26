@@ -43,9 +43,9 @@ public class FileExtractionTest {
         extractor = new ConceptExtractor();
         env = new TestEnvironment();
 
-        input = env.createRdfInput("input", false);
+        input = env.createRdfInput("rdfInput", false);
         fileInput = env.createFilesInput("fileInput");
-        output = env.createRdfOutput("output", false);
+        output = env.createRdfOutput("rdfOutput", false);
 
         InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream("file.ttl");
 

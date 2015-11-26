@@ -43,7 +43,7 @@ public class FileWithoutUriExtractionTest {
         env = new TestEnvironment();
 
         fileInput = env.createFilesInput("fileInput");
-        output = env.createRdfOutput("output", false);
+        output = env.createRdfOutput("rdfOutput", false);
 
         File inputFile = new File(java.net.URI.create(fileInput.addNewFile("file1.txt")));
         try (FileOutputStream fout = new FileOutputStream(inputFile)) {

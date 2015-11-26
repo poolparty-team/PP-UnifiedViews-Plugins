@@ -10,23 +10,18 @@ import eu.unifiedviews.dpu.DPUException;
 import eu.unifiedviews.helpers.dataunit.DataUnitUtils;
 import eu.unifiedviews.helpers.dataunit.files.FilesHelper;
 import eu.unifiedviews.helpers.dataunit.rdf.RdfDataUnitUtils;
-import eu.unifiedviews.helpers.dataunit.virtualpath.VirtualPathHelpers;
 import eu.unifiedviews.helpers.dpu.extension.faulttolerance.FaultToleranceUtils;
 import eu.unifiedviews.helpers.dpu.extension.rdf.simple.WritableSimpleRdf;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpStatus;
-import org.apache.http.NameValuePair;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.AuthCache;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.entity.ContentType;
-import org.apache.http.entity.FileEntity;
-import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.entity.mime.HttpMultipartMode;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.auth.BasicScheme;
@@ -34,7 +29,6 @@ import org.apache.http.impl.client.BasicAuthCache;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.openrdf.model.*;
 import org.openrdf.model.impl.URIImpl;
@@ -53,8 +47,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -76,16 +68,16 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
     @ExtensionInitializer.Init
     public FaultTolerance faultTolerance;
 
-    @DataUnit.AsInput(name = "input", optional = true)
-    public RDFDataUnit input;
+    @DataUnit.AsInput(name = "rdfInput", optional = true)
+    public RDFDataUnit rdfInput;
 
     @DataUnit.AsInput(name = "fileInput", optional = true)
     public FilesDataUnit fileInput;
 
-    @DataUnit.AsOutput(name = "output")
-    public WritableRDFDataUnit output;
+    @DataUnit.AsOutput(name = "rdfOutput")
+    public WritableRDFDataUnit rdfOutput;
 
-    @ExtensionInitializer.Init(param = "output")
+    @ExtensionInitializer.Init(param = "rdfOutput")
     public WritableSimpleRdf rdfWrapper;
 
 	public ConceptExtractor() {
@@ -98,7 +90,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
      */
     @Override
     protected void innerExecute() throws DPUException {
-        if (fileInput == null && input == null) {
+        if (fileInput == null && rdfInput == null) {
             throw new DPUException("Input data is not provided for this DPU");
         }
 
@@ -106,7 +98,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
 
             @Override
             public RDFDataUnit.Entry action() throws Exception {
-                return RdfDataUnitUtils.addGraph(output, DataUnitUtils.generateSymbolicName(this.getClass()));
+                return RdfDataUnitUtils.addGraph(rdfOutput, DataUnitUtils.generateSymbolicName(this.getClass()));
             }
         });
         rdfWrapper.setOutput(outputEntry);
@@ -115,8 +107,8 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         String serviceUrl = config.getServiceRequestUrl();
         HttpStateWrapper httpWrapper = createHttpStateWithAuth();
 
-        if (fileInput == null && input != null) {
-            final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, input, RDFDataUnit.Entry.class);
+        if (fileInput == null && rdfInput != null) {
+            final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, rdfInput, RDFDataUnit.Entry.class);
             for (RDFDataUnit.Entry entry : entries) {
                 graphUri = FaultToleranceUtils.asGraph(faultTolerance, entry);
                 ContextUtils.sendShortInfo(ctx, "Start loading statements from graph " + graphUri.toString());
@@ -127,8 +119,8 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                 ContextUtils.sendShortInfo(ctx, "Finish extraction");
             }
         } else {
-            if (input != null) {
-                final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, input, RDFDataUnit.Entry.class);
+            if (rdfInput != null) {
+                final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, rdfInput, RDFDataUnit.Entry.class);
                 if (entries.size() > 1) {
                     throw new DPUException("Concept extraction on files must be provided with one file input and no more " +
                             "than one RDF input denoting file URIs");
@@ -155,7 +147,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
      */
     private void loadGraphStatements(final URI graphUri) throws DPUException {
         graphStatements = new HashSet<>();
-        faultTolerance.execute(input, new FaultTolerance.ConnectionAction() {
+        faultTolerance.execute(rdfInput, new FaultTolerance.ConnectionAction() {
             @Override
             public void action(RepositoryConnection connection) throws Exception {
                 RepositoryResult<Statement> repositoryResult = connection.getStatements(null, null, null, false, graphUri);
@@ -173,7 +165,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
 
     private void loadFilenameUriMappings(final URI graphUri) throws DPUException {
         filenameUriMappings = new HashMap<>();
-        faultTolerance.execute(input, new FaultTolerance.ConnectionAction() {
+        faultTolerance.execute(rdfInput, new FaultTolerance.ConnectionAction() {
             @Override
             public void action(RepositoryConnection connection) throws Exception {
                 RepositoryResult<Statement> repositoryResult = connection.getStatements(null, null, null, false, graphUri);
