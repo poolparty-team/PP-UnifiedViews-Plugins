@@ -1,10 +1,11 @@
 ### Description
 
-PoolParty Concept Extractor is a plugin for UnifiedViews to consume the Concept Extraction service provided by PoolParty Thesaurus Server. Given a list of triples with string literal objects representing texts as input, this extractor annotates texts against a knowledge organization managed by PoolParty and produces annotations in RDF triples as output. Please refer to the following documentation for more information about PoolParty.
+PoolParty Concept Extractor is a plugin for UnifiedViews to consume the Concept Extraction service provided by PoolParty Thesaurus Server. Given a list of triples with string literal objects representing texts as input, this extractor annotates texts against a knowledge organization managed by PoolParty and produces annotations in RDF triples as output. 
 
-[PoolParty Extractor API Reference Documentation](http://vocabulary.semantic-web.at/extractor/doc)
-[PoolParty Extractor Guide](https://grips.semantic-web.at/display/public/POOLDOKU/PPX+-+Guide)
-[PoolParty Manual](https://grips.semantic-web.at/display/POOLDOKU/PoolParty+Manual)
+Please refer to the following documentation for more information about PoolParty.
+* [PoolParty Extractor API Reference Documentation](http://vocabulary.semantic-web.at/extractor/doc)
+* [PoolParty Extractor Guide](https://grips.semantic-web.at/display/public/POOLDOKU/PPX+-+Guide)
+* [PoolParty Manual](https://grips.semantic-web.at/display/POOLDOKU/PoolParty+Manual)
 
 ### Configuration parameters
 
