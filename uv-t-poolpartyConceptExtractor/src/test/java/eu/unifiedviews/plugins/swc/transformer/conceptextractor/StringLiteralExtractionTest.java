@@ -23,20 +23,21 @@ import java.util.Properties;
 /**
  * Created by yyz on 15/10/15.
  */
-public class DpuTest {
+public class StringLiteralExtractionTest {
     private static ConceptExtractor extractor;
     private static TestEnvironment env;
     private static WritableRDFDataUnit output;
     private static WritableRDFDataUnit input;
     private static RepositoryConnection connection;
     private static Properties properties;
+    private static ConceptExtractorConfig_V1 config;
 
     @BeforeClass
     public static void before() throws Exception {
         extractor = new ConceptExtractor();
         env = new TestEnvironment();
-        input = env.createRdfInput("input", false);
-        output = env.createRdfOutput("output", false);
+        input = env.createRdfInput("rdfInput", false);
+        output = env.createRdfOutput("rdfOutput", false);
 
         InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream("test.ttl");
 
@@ -50,6 +51,23 @@ public class DpuTest {
 
         properties = new Properties();
         properties.load(Thread.currentThread().getContextClassLoader().getResourceAsStream("target.properties"));
+
+        config = new ConceptExtractorConfig_V1();
+        config.setHost(properties.getProperty("host"));
+        config.setPort(properties.getProperty("port"));
+        config.setExtractorApi(properties.getProperty("extractorApi"));
+        config.setProjectId(properties.getProperty("projectId"));
+        config.setUsername(properties.getProperty("username"));
+        config.setPassword(properties.getProperty("password"));
+        config.setLanguage(properties.getProperty("en"));
+        List<String> options = new ArrayList<>();
+        options.add("useTransitiveBroaderConcepts");
+        options.add("useTransitiveBroaderTopConcepts");
+        options.add("useRelatedConcepts");
+        options.add("filterNestedConcepts");
+        options.add("tfidfScoring");
+        options.add("useTypes");
+        config.setBooleanParams(options);
     }
 
     @AfterClass
@@ -66,23 +84,6 @@ public class DpuTest {
 
     @Test
     public void extractConcepts() throws Exception {
-        ConceptExtractorConfig_V1 config = new ConceptExtractorConfig_V1();
-        config.setHost(properties.getProperty("host"));
-        config.setPort(properties.getProperty("port"));
-        config.setExtractorApi(properties.getProperty("extractorApi"));
-        config.setProjectId(properties.getProperty("projectId"));
-        config.setUsername(properties.getProperty("username"));
-        config.setPassword(properties.getProperty("password"));
-        config.setLanguage(properties.getProperty("en"));
-        List<String> options = new ArrayList<>();
-        options.add("useTransitiveBroaderConcepts");
-        options.add("useTransitiveBroaderTopConcepts");
-        options.add("useRelatedConcepts");
-        options.add("filterNestedConcepts");
-        options.add("tfidfScoring");
-        options.add("useTypes");
-        config.setBooleanParams(options);
-
         extractor.configure((new ConfigurationBuilder()).setDpuConfiguration(config).toString());
         env.run(extractor);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
