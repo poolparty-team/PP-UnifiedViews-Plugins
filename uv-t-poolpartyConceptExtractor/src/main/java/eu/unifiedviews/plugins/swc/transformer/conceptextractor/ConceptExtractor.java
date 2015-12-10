@@ -282,7 +282,10 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         String text = object.stringValue();
 
         Resource subject = statement.getSubject();
-        String predicateLocalName = statement.getPredicate().getLocalName();
+        char c[] = statement.getPredicate().getLocalName().toCharArray();
+        c[0] = Character.toLowerCase(c[0]);
+        String predicateLocalName = new String(c);
+
         URI tagPredicate = new URIImpl(PPX_NS + predicateLocalName + "IsTaggedBy");
         URI taggedResource = new URIImpl(PPX_NS + predicateLocalName + "/"
                 + UUID.randomUUID().toString());
