@@ -1,12 +1,14 @@
 package eu.unifiedviews.swc;
 
+import java.util.Arrays;
 import java.util.Collection;
 
-public class ConfluenceJiraConfig {
+public class ConfluenceJiraExtractorConfig {
 
-    private String confluenceApiBaseUri, jiraApiBaseUri;
-    private Collection<String> jiraProjectKeys;
-    private String username, password;
+    private String confluenceApiBaseUri = "https://grips.semantic-web.at/rest/api/",
+            jiraApiBaseUri = "http://jira-dev.semantic-web.at:8080/rest/api/latest/";
+    private Collection<String> jiraProjectKeys = Arrays.asList("POOL, PPS");
+    private String username = "username", password = "password";
 
     public String getConfluenceApiBaseUri() {
         return confluenceApiBaseUri;

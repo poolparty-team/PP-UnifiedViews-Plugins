@@ -19,15 +19,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 @DPU.AsExtractor
-public class ConfluenceJira extends AbstractDpu<ConfluenceJiraConfig> {
+public class ConfluenceJiraExtractor extends AbstractDpu<ConfluenceJiraExtractorConfig> {
 
-    private static final Logger log = LoggerFactory.getLogger(ConfluenceJira.class);
+    private static final Logger log = LoggerFactory.getLogger(ConfluenceJiraExtractor.class);
 
     @DataUnit.AsOutput(name = "rdfOutput")
     private WritableRDFDataUnit out;
 
-	public ConfluenceJira() {
-		super(ConfluenceJiraDialog.class, ConfigHistory.noHistory(ConfluenceJiraConfig.class));
+	public ConfluenceJiraExtractor() {
+		super(ConfluenceJiraExtractorDialog.class, ConfigHistory.noHistory(ConfluenceJiraExtractorConfig.class));
 	}
 		
     @Override
