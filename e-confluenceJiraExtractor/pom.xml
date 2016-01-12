@@ -1,18 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>eu.unifiedviews</groupId>
         <artifactId>uv-pom-dpu</artifactId>
-        <version>2.1.4</version>
-        <relativePath>../../Plugin-DevEnv/uv-pom-dpu</relativePath>
+        <version>2.1.5</version>
     </parent>
-
-    <groupId>eu.unifiedviews</groupId>
+    <groupId>eu.unifiedviews.swc</groupId>
     <artifactId>e-confluenceJiraExtractor</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <packaging>bundle</packaging>
+    <name>Confluence/Jira Extractor</name>
+    <description></description>
+
+    <properties>
+        <dpu.package>eu.unifiedviews.swc</dpu.package>
+        <dpu.mainClass>MyDpu</dpu.mainClass>
+    </properties>
 
     <dependencies>
         <!-- PoolParty dependencies -->
@@ -22,22 +26,16 @@
             <version>1.0-SNAPSHOT</version>
         </dependency>
 
-        <!-- UnifiedViews dependencies -->
+        <!-- UnifiedViews helpers. -->
         <dependency>
             <groupId>eu.unifiedviews</groupId>
             <artifactId>uv-dataunit-helpers</artifactId>
-            <version>2.1.4</version>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>eu.unifiedviews</groupId>
             <artifactId>uv-dpu-helpers</artifactId>
-            <version>2.1.4</version>
-        </dependency>
-        <dependency>
-            <groupId>eu.unifiedviews</groupId>
-            <artifactId>uv-dpu-api</artifactId>
-            <version>2.1.4</version>
-            <scope>provided</scope>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 
