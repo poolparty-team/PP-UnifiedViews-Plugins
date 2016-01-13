@@ -24,7 +24,7 @@ public class ConfluenceJiraExtractor extends AbstractDpu<ConfluenceJiraExtractor
     private static final Logger log = LoggerFactory.getLogger(ConfluenceJiraExtractor.class);
 
     @DataUnit.AsOutput(name = "rdfOutput")
-    private WritableRDFDataUnit out;
+    public WritableRDFDataUnit out;
 
 	public ConfluenceJiraExtractor() {
 		super(ConfluenceJiraExtractorDialog.class, ConfigHistory.noHistory(ConfluenceJiraExtractorConfig.class));
@@ -36,7 +36,6 @@ public class ConfluenceJiraExtractor extends AbstractDpu<ConfluenceJiraExtractor
 
         try {
             RDFWriter writer = new ConnectionRdfWriter(out.getConnection());
-
             new UnifiedGovernance().extract(config.getConfluenceApiBaseUri(),
                     config.getJiraApiBaseUri(),
                     config.getJiraProjectKeys(),
