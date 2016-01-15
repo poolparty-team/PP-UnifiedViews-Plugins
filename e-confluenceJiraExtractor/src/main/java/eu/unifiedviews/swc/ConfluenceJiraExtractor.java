@@ -1,6 +1,6 @@
 package eu.unifiedviews.swc;
 
-import eu.aligned.unifiedgovernance.UnifiedGovernance;
+import biz.poolparty.aligned.unifiedgovernance.UnifiedGovernance;
 import eu.unifiedviews.dataunit.DataUnit;
 import eu.unifiedviews.dataunit.rdf.WritableRDFDataUnit;
 import eu.unifiedviews.dpu.DPU;
@@ -36,6 +36,7 @@ public class ConfluenceJiraExtractor extends AbstractDpu<ConfluenceJiraExtractor
 
         try {
             RDFWriter writer = new ConnectionRdfWriter(out.getConnection());
+
             new UnifiedGovernance().extract(config.getConfluenceApiBaseUri(),
                     config.getJiraApiBaseUri(),
                     config.getJiraProjectKeys(),

@@ -19,8 +19,8 @@
         <embed.transitive>true</embed.transitive>
         <osgi.import.package>!bsh, !*jamonapi*, !*aspect*, !*snakeyaml*, !com.sun.net.httpserver, !javax.ejb, !javax.el,
             !*groovy*, !javax.enterprise.concurrent, !javax.inject, !joptsimple, !*avalon*, !org.apache.log, !*hibernate*,
-            !*joda*, !*jruby*, !org.springframework.cglib*, !org.springframework.instrument*, !org.springframework.objenesis,
-            !org.springframework.util.concurrent, !org.apache.tools.ant*, !org.springframework.asm*, !sun.misc,
+            !*joda*, !*jruby*, !com.ibm.uvm.tools, !com.sun.jdmk.comm, !javax.jmdns, !javax.jms, !javax.mail*,
+            !org.apache.tools.ant*, !org.springframework.asm.util, !org.springframework.instrument, !sun.misc,
         </osgi.import.package>
     </properties>
 
@@ -36,13 +36,19 @@
         <dependency>
             <groupId>eu.unifiedviews</groupId>
             <artifactId>uv-dataunit-helpers</artifactId>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>eu.unifiedviews</groupId>
             <artifactId>uv-dpu-helpers</artifactId>
-            <scope>compile</scope>
         </dependency>
+
+        <!-- Transitive dependencies -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-core</artifactId>
+            <version>4.1.5.RELEASE</version>
+        </dependency>
+
     </dependencies>
 
     <repositories>
