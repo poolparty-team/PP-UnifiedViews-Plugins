@@ -13,7 +13,6 @@ import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.rio.RDFFormat;
 import org.openrdf.rio.RDFHandlerException;
-import org.openrdf.rio.RDFWriter;
 import org.openrdf.rio.helpers.RDFWriterBase;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,14 +34,12 @@ public class ConfluenceJiraExtractor extends AbstractDpu<ConfluenceJiraExtractor
         ContextUtils.sendShortInfo(ctx, "ConfluenceJira.message");
 
         try {
-            RDFWriter writer = new ConnectionRdfWriter(out.getConnection());
-
-            new UnifiedGovernance().extract(config.getConfluenceApiBaseUri(),
+            UnifiedGovernance.extract(config.getConfluenceApiBaseUri(),
                     config.getJiraApiBaseUri(),
                     config.getJiraProjectKeys(),
                     config.getUsername(),
                     config.getPassword(),
-                    writer);
+                    new ConnectionRdfWriter(out.getConnection()));
         }
         catch (Exception e) {
             log.error("Error extracting data", e);

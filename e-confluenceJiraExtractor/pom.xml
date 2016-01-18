@@ -17,11 +17,16 @@
         <dpu.package>eu.unifiedviews.swc</dpu.package>
         <dpu.mainClass>ConfluenceJiraExtractor</dpu.mainClass>
         <embed.transitive>true</embed.transitive>
-        <osgi.import.package>!bsh, !*jamonapi*, !*aspect*, !*snakeyaml*, !com.sun.net.httpserver, !javax.ejb, !javax.el,
-            !*groovy*, !javax.enterprise.concurrent, !javax.inject, !joptsimple, !*avalon*, !org.apache.log, !*hibernate*,
-            !*joda*, !*jruby*, !com.ibm.uvm.tools, !com.sun.jdmk.comm, !javax.jmdns, !javax.jms, !javax.mail*,
-            !org.apache.tools.ant*, !org.springframework.asm.util, !org.springframework.instrument, !sun.misc,
+        <osgi.import.package>!com.ibm.uvm.tools,!com.sun.jdmk.comm,!javax.jmdns,!javax.jms,
+            !javax.mail*,!*avalon*,!org.apache.log,
         </osgi.import.package>
+        <!--
+<osgi.import.package>!bsh, !*jamonapi*, !*aspect*, !*snakeyaml*, !com.sun.net.httpserver, !javax.ejb, !javax.el,
+    !*groovy*, !javax.enterprise.concurrent, !javax.inject, !joptsimple, !*avalon*, !org.apache.log, !*hibernate*,
+    !*joda*, !*jruby*, !com.ibm.uvm.tools, !com.sun.jdmk.comm, !javax.jmdns, !javax.jms, !javax.mail*,
+    !org.apache.tools.ant*, !org.springframework.asm.util, !org.springframework.instrument, !sun.misc,
+</osgi.import.package>
+-->
     </properties>
 
     <dependencies>
@@ -41,14 +46,6 @@
             <groupId>eu.unifiedviews</groupId>
             <artifactId>uv-dpu-helpers</artifactId>
         </dependency>
-
-        <!-- Transitive dependencies -->
-        <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-core</artifactId>
-            <version>4.1.5.RELEASE</version>
-        </dependency>
-
     </dependencies>
 
     <repositories>
