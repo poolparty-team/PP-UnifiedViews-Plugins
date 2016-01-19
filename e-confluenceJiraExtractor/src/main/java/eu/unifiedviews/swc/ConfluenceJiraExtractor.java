@@ -22,7 +22,7 @@ public class ConfluenceJiraExtractor extends AbstractDpu<ConfluenceJiraExtractor
 
     private static final Logger log = LoggerFactory.getLogger(ConfluenceJiraExtractor.class);
 
-    @DataUnit.AsOutput(name = "rdfOutput")
+    @DataUnit.AsOutput(name = "output")
     public WritableRDFDataUnit out;
 
 	public ConfluenceJiraExtractor() {
@@ -34,12 +34,14 @@ public class ConfluenceJiraExtractor extends AbstractDpu<ConfluenceJiraExtractor
         ContextUtils.sendShortInfo(ctx, "ConfluenceJira.message");
 
         try {
+            ConnectionRdfWriter connectionRdfWriter =  new ConnectionRdfWriter(out.getConnection());
             UnifiedGovernance.extract(config.getConfluenceApiBaseUri(),
                     config.getJiraApiBaseUri(),
                     config.getJiraProjectKeys(),
                     config.getUsername(),
                     config.getPassword(),
-                    new ConnectionRdfWriter(out.getConnection()));
+                    connectionRdfWriter);
+            log.info("Extracted " +connectionRdfWriter.statementCount+ " statements");
         }
         catch (Exception e) {
             log.error("Error extracting data", e);
@@ -49,6 +51,7 @@ public class ConfluenceJiraExtractor extends AbstractDpu<ConfluenceJiraExtractor
     private class ConnectionRdfWriter extends RDFWriterBase {
 
         private RepositoryConnection repCon;
+        private int statementCount = 0;
 
         ConnectionRdfWriter(RepositoryConnection repCon) {
             this.repCon = repCon;
@@ -71,6 +74,7 @@ public class ConfluenceJiraExtractor extends AbstractDpu<ConfluenceJiraExtractor
         public void handleStatement(Statement statement) throws RDFHandlerException {
             try {
                 repCon.add(statement);
+                statementCount++;
             }
             catch (RepositoryException e) {
                 log.error("Error handling extracted statement", e);
