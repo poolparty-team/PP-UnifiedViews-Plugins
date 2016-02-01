@@ -1,5 +1,6 @@
 package eu.unifiedviews.swc;
 
+import com.vaadin.ui.PasswordField;
 import com.vaadin.ui.TextField;
 import com.vaadin.ui.VerticalLayout;
 import eu.unifiedviews.dpu.config.DPUConfigException;
@@ -12,7 +13,8 @@ import java.util.StringTokenizer;
 
 public class ConfluenceJiraExtractorDialog extends AbstractDialog<ConfluenceJiraExtractorConfig> {
 
-    private TextField confluenceApiBaseUri, jiraApiBaseUri, username, password, jiraProjectKeys;
+    private TextField confluenceApiBaseUri, jiraApiBaseUri, username, jiraProjectKeys;
+    private PasswordField password;
 
     public ConfluenceJiraExtractorDialog() {
         super(ConfluenceJiraExtractor.class);
@@ -79,7 +81,7 @@ public class ConfluenceJiraExtractorDialog extends AbstractDialog<ConfluenceJira
         username.setRequired(true);
         mainLayout.addComponent(username);
 
-        password = new TextField(ctx.tr("ConfluenceJira.dialog.password"));
+        password = new PasswordField(ctx.tr("ConfluenceJira.dialog.password"));
         password.setWidth("90%");
         password.setRequired(true);
         mainLayout.addComponent(password);
