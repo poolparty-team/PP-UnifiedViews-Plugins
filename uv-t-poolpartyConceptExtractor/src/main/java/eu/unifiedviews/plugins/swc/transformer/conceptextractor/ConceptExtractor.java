@@ -208,7 +208,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                 index++;
                 if (index >= reportIndex) {
                     reportIndex += blockSize;
-                    LOG.info("Extracted " + index + " of " + graphSize + " texts");
+                    ContextUtils.sendShortInfo(ctx, "Extracted " + index + " of " + graphSize + " texts");
                 }
             }
         } else {
@@ -233,7 +233,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                         index++;
                         if (index >= reportIndex) {
                             reportIndex += blockSize;
-                            LOG.info("Extracted " + index + " of " + fileSize + " files");
+                            ContextUtils.sendShortInfo(ctx, "Extracted " + index + " of " + fileSize + " files");
                         }
                     } catch (DataUnitException e) {
                         LOG.warn("Unable to read the file from files data unit entry", e);
@@ -251,7 +251,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                         index++;
                         if (index >= reportIndex) {
                             reportIndex += blockSize;
-                            LOG.info("Extracted " + index + " of " + fileSize + " files");
+                            ContextUtils.sendShortInfo(ctx, "Extracted " + index + " of " + fileSize + " files");
                         }
                     } catch (DataUnitException | UnsupportedEncodingException e) {
                         LOG.warn("Unable to read the file from files data unit entry", e);
@@ -282,7 +282,8 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         String text = object.stringValue();
 
         Resource subject = statement.getSubject();
-        char c[] = statement.getPredicate().getLocalName().toCharArray();
+        URI predicate = statement.getPredicate();
+        char c[] = predicate.getLocalName().toCharArray();
         c[0] = Character.toLowerCase(c[0]);
         String predicateLocalName = new String(c);
 
@@ -294,7 +295,10 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
 
         String rdf = requestExtractionService(serviceUrl, httpWrapper, builder, null);
         if (rdf == null) {
-            LOG.warn("Extraction for string literal \"" + text + "\" failed");
+            if (text.length() > 200) {
+                text = text.substring(0, 200);
+            }
+            LOG.warn("Extraction for string literal \"" + text + "...\" of subject <" + subject.stringValue() + "> and predicate <" + predicate.stringValue() + "> failed");
             return;
         }
         List<Statement> rdfExtractionResult = new ArrayList<>();
@@ -303,7 +307,16 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         try {
             rdfParser.parse(new StringReader(rdf), PPX_NS);
         } catch (Exception e) {
-            throw new DPUException(e);
+            try {
+                rdfParser.parse(new StringReader(requestExtractionService(serviceUrl, httpWrapper, builder, null)), PPX_NS);
+            } catch (Exception e2) {
+                if (text.length() > 200) {
+                    text = text.substring(0, 200);
+                }
+                LOG.warn("Extraction for string literal \"" + text + "...\" of subject <" + subject.stringValue() + "> and predicate <" + predicate.stringValue() + "> failed");
+                LOG.warn(e.getMessage());
+                return;
+            }
         }
 
         rdfWrapper.add(rdfExtractionResult);
@@ -334,7 +347,13 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         try {
             rdfParser.parse(new StringReader(rdf), PPX_NS);
         } catch (Exception e) {
-            throw new DPUException(e);
+            try {
+                rdfParser.parse(new StringReader(requestExtractionService(serviceUrl, httpWrapper, builder, file)), PPX_NS);
+            } catch (Exception e2) {
+                LOG.warn("Extraction for file \"" + file.getName() + "\" failed");
+                LOG.warn(e.getMessage());
+                return;
+            }
         }
 
         rdfWrapper.add(rdfExtractionResult);
