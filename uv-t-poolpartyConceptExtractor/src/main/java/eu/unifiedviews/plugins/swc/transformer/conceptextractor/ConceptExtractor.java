@@ -14,11 +14,14 @@ import eu.unifiedviews.helpers.dpu.extension.faulttolerance.FaultToleranceUtils;
 import eu.unifiedviews.helpers.dpu.extension.rdf.simple.WritableSimpleRdf;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpStatus;
+import org.apache.http.NameValuePair;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.AuthCache;
 import org.apache.http.client.CredentialsProvider;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -30,6 +33,7 @@ import org.apache.http.impl.client.BasicAuthCache;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.openrdf.model.*;
 import org.openrdf.model.impl.URIImpl;
@@ -107,8 +111,11 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         rdfWrapper.setOutput(outputEntry);
 
         ContextUtils.sendShortInfo(ctx, "Prepare for concept extraction");
-        String serviceUrl = config.getServiceRequestUrl();
+        String serviceUrl = config.getExtractionServiceUrl();
         HttpStateWrapper httpWrapper = createHttpStateWithAuth();
+
+        ContextUtils.sendShortInfo(ctx, "Check extraction model status");
+        requestExtractionModelUpdateService(httpWrapper);
 
         if (fileInput == null && rdfInput != null) {
             final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, rdfInput, RDFDataUnit.Entry.class);
@@ -208,7 +215,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                 index++;
                 if (index >= reportIndex) {
                     reportIndex += blockSize;
-                    LOG.info("Extracted " + index + " of " + graphSize + " texts");
+                    ContextUtils.sendShortInfo(ctx, "Extracted " + index + " of " + graphSize + " texts");
                 }
             }
         } else {
@@ -233,7 +240,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                         index++;
                         if (index >= reportIndex) {
                             reportIndex += blockSize;
-                            LOG.info("Extracted " + index + " of " + fileSize + " files");
+                            ContextUtils.sendShortInfo(ctx, "Extracted " + index + " of " + fileSize + " files");
                         }
                     } catch (DataUnitException e) {
                         LOG.warn("Unable to read the file from files data unit entry", e);
@@ -251,7 +258,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                         index++;
                         if (index >= reportIndex) {
                             reportIndex += blockSize;
-                            LOG.info("Extracted " + index + " of " + fileSize + " files");
+                            ContextUtils.sendShortInfo(ctx, "Extracted " + index + " of " + fileSize + " files");
                         }
                     } catch (DataUnitException | UnsupportedEncodingException e) {
                         LOG.warn("Unable to read the file from files data unit entry", e);
@@ -282,7 +289,8 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         String text = object.stringValue();
 
         Resource subject = statement.getSubject();
-        char c[] = statement.getPredicate().getLocalName().toCharArray();
+        URI predicate = statement.getPredicate();
+        char c[] = predicate.getLocalName().toCharArray();
         c[0] = Character.toLowerCase(c[0]);
         String predicateLocalName = new String(c);
 
@@ -294,7 +302,10 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
 
         String rdf = requestExtractionService(serviceUrl, httpWrapper, builder, null);
         if (rdf == null) {
-            LOG.warn("Extraction for string literal \"" + text + "\" failed");
+            if (text.length() > 200) {
+                text = text.substring(0, 200);
+            }
+            LOG.warn("Extraction for string literal \"" + text + "...\" of subject <" + subject.stringValue() + "> and predicate <" + predicate.stringValue() + "> failed");
             return;
         }
         List<Statement> rdfExtractionResult = new ArrayList<>();
@@ -303,7 +314,16 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         try {
             rdfParser.parse(new StringReader(rdf), PPX_NS);
         } catch (Exception e) {
-            throw new DPUException(e);
+            try {
+                rdfParser.parse(new StringReader(requestExtractionService(serviceUrl, httpWrapper, builder, null)), PPX_NS);
+            } catch (Exception e2) {
+                if (text.length() > 200) {
+                    text = text.substring(0, 200);
+                }
+                LOG.warn("Extraction for string literal \"" + text + "...\" of subject <" + subject.stringValue() + "> and predicate <" + predicate.stringValue() + "> failed");
+                LOG.warn(e.getMessage());
+                return;
+            }
         }
 
         rdfWrapper.add(rdfExtractionResult);
@@ -334,7 +354,13 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         try {
             rdfParser.parse(new StringReader(rdf), PPX_NS);
         } catch (Exception e) {
-            throw new DPUException(e);
+            try {
+                rdfParser.parse(new StringReader(requestExtractionService(serviceUrl, httpWrapper, builder, file)), PPX_NS);
+            } catch (Exception e2) {
+                LOG.warn("Extraction for file \"" + file.getName() + "\" failed");
+                LOG.warn(e.getMessage());
+                return;
+            }
         }
 
         rdfWrapper.add(rdfExtractionResult);
@@ -369,6 +395,41 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
             return null;
         }
         return triples;
+    }
+
+    /**
+     * Check and refresh extraction model of the PoolParty project
+     * @param wrapper Wrapped HTTP state used for requests
+     */
+    private void requestExtractionModelUpdateService(HttpStateWrapper wrapper) {
+        try {
+            String modelStatus = null;
+            String requestUrl = config.getExtractionModelServiceUrl() + "/" + config.getProjectId();
+            HttpGet httpGet = new HttpGet(requestUrl);
+            CloseableHttpResponse response = wrapper.client.execute(wrapper.host, httpGet, wrapper.context);
+            int status = response.getStatusLine().getStatusCode();
+            if (status == HttpStatus.SC_OK) {
+                modelStatus = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+            }
+            response.close();
+
+            if (modelStatus != null && modelStatus.contains("\"upToDate\" : true")) {
+                LOG.info("Extraction model is up-to-date");
+                return;
+            } else {
+                LOG.info("Start to update extraction model because its status is unknown");
+                requestUrl = requestUrl + "/refresh";
+                httpGet = new HttpGet(requestUrl);
+                response = wrapper.client.execute(wrapper.host, httpGet, wrapper.context);
+                status = response.getStatusLine().getStatusCode();
+                if (status != HttpStatus.SC_OK) {
+                    ContextUtils.sendShortInfo(ctx, "Extraction model update failed, extraction result may be outdated");
+                    LOG.warn("Extraction model update failed, extraction result may be outdated");
+                }
+            }
+        } catch (Exception e) {
+            LOG.warn("Encountered an exception when requesting extraction model update service", e);
+        }
     }
 
     /**
