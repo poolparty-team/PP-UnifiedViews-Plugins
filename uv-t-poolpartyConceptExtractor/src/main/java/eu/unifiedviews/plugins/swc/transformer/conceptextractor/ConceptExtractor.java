@@ -19,12 +19,10 @@ import eu.unifiedviews.helpers.dpu.extension.faulttolerance.FaultToleranceUtils;
 import eu.unifiedviews.helpers.dpu.extension.rdf.simple.WritableSimpleRdf;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpStatus;
-import org.apache.http.NameValuePair;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.AuthCache;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
@@ -37,7 +35,6 @@ import org.apache.http.impl.client.BasicAuthCache;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.openrdf.model.*;
 import org.openrdf.model.impl.URIImpl;
@@ -292,7 +289,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         c[0] = Character.toLowerCase(c[0]);
         String predicateLocalName = new String(c);
 
-        URI tagPredicate = new URIImpl(PPX_NS + predicateLocalName + "IsTaggedBy");
+        URI tagPredicate = new URIImpl(PPX_NS + predicateLocalName +"/"+ "IsTaggedBy");
         URI taggedResource = new URIImpl(PPX_NS + predicateLocalName + "/"
                 + UUID.randomUUID().toString());
         builder.addTextBody("text", text);
