@@ -16,6 +16,7 @@ public class ConceptExtractorConfig_V1 {
     private String projectId = "";
     private String language = "en";
     private String extractorApi = "/extractor/api/annotate";
+    private String extractionModelApi = "/PoolParty/api/indexbuilder";
     private String username = "";
     private String password = "";
     private String numberOfConcepts = "";
@@ -67,10 +68,6 @@ public class ConceptExtractorConfig_V1 {
         this.port = port;
     }
 
-    public String getServiceRequestUrl() {
-        return "http://" + host + ":" + port + extractorApi;
-    }
-
     public String getUsername() {
         return username;
     }
@@ -118,4 +115,13 @@ public class ConceptExtractorConfig_V1 {
     public void setBooleanParams(List<String> booleanParams) {
         this.booleanParams = booleanParams;
     }
+
+    public String getExtractionServiceUrl() {
+        return "http://" + host + ":" + port + extractorApi;
+    }
+
+    public String getExtractionModelServiceUrl() {
+        return "http://" + host + ":" + port + extractionModelApi;
+    }
+
 }

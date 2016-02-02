@@ -14,11 +14,14 @@ import eu.unifiedviews.helpers.dpu.extension.faulttolerance.FaultToleranceUtils;
 import eu.unifiedviews.helpers.dpu.extension.rdf.simple.WritableSimpleRdf;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpStatus;
+import org.apache.http.NameValuePair;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.AuthCache;
 import org.apache.http.client.CredentialsProvider;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.client.utils.URLEncodedUtils;
@@ -30,6 +33,7 @@ import org.apache.http.impl.client.BasicAuthCache;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.openrdf.model.*;
 import org.openrdf.model.impl.URIImpl;
@@ -107,8 +111,11 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         rdfWrapper.setOutput(outputEntry);
 
         ContextUtils.sendShortInfo(ctx, "Prepare for concept extraction");
-        String serviceUrl = config.getServiceRequestUrl();
+        String serviceUrl = config.getExtractionServiceUrl();
         HttpStateWrapper httpWrapper = createHttpStateWithAuth();
+
+        ContextUtils.sendShortInfo(ctx, "Check extraction model status");
+        requestExtractionModelUpdateService(httpWrapper);
 
         if (fileInput == null && rdfInput != null) {
             final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, rdfInput, RDFDataUnit.Entry.class);
@@ -388,6 +395,41 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
             return null;
         }
         return triples;
+    }
+
+    /**
+     * Check and refresh extraction model of the PoolParty project
+     * @param wrapper Wrapped HTTP state used for requests
+     */
+    private void requestExtractionModelUpdateService(HttpStateWrapper wrapper) {
+        try {
+            String modelStatus = null;
+            String requestUrl = config.getExtractionModelServiceUrl() + "/" + config.getProjectId();
+            HttpGet httpGet = new HttpGet(requestUrl);
+            CloseableHttpResponse response = wrapper.client.execute(wrapper.host, httpGet, wrapper.context);
+            int status = response.getStatusLine().getStatusCode();
+            if (status == HttpStatus.SC_OK) {
+                modelStatus = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+            }
+            response.close();
+
+            if (modelStatus != null && modelStatus.contains("\"upToDate\" : true")) {
+                LOG.info("Extraction model is up-to-date");
+                return;
+            } else {
+                LOG.info("Start to update extraction model because its status is unknown");
+                requestUrl = requestUrl + "/refresh";
+                httpGet = new HttpGet(requestUrl);
+                response = wrapper.client.execute(wrapper.host, httpGet, wrapper.context);
+                status = response.getStatusLine().getStatusCode();
+                if (status != HttpStatus.SC_OK) {
+                    ContextUtils.sendShortInfo(ctx, "Extraction model update failed, extraction result may be outdated");
+                    LOG.warn("Extraction model update failed, extraction result may be outdated");
+                }
+            }
+        } catch (Exception e) {
+            LOG.warn("Encountered an exception when requesting extraction model update service", e);
+        }
     }
 
     /**
