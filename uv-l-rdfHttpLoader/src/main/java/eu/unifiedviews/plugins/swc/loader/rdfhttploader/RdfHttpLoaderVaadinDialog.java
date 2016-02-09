@@ -7,6 +7,9 @@ import com.vaadin.data.validator.StringLengthValidator;
 import com.vaadin.ui.*;
 import eu.unifiedviews.dpu.config.DPUConfigException;
 import eu.unifiedviews.helpers.dpu.vaadin.dialog.AbstractDialog;
+import org.openrdf.query.MalformedQueryException;
+import org.openrdf.query.QueryLanguage;
+import org.openrdf.query.parser.QueryParserUtil;
 
 /**
  * Vaadin configuration dialog for RdfHttpLoader.
@@ -63,7 +66,10 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
             throw new DPUConfigException(ctx.tr("RdfHttpLoader.dialog.error.password"));
         }
         if (graphUri.isEnabled() && !graphUri.isValid()) {
-            throw new DPUConfigException(ctx.tr("RdfHttpLoader.dialog.error.graph"));
+            throw new DPUConfigException(ctx.tr("RdfHttpLoader.dialog.error.graphUri"));
+        }
+        if (update.isEnabled() && !update.isValid()) {
+            throw new DPUConfigException(ctx.tr("RdfHttpLoader.dialog.error.update"));
         }
 
         final RdfHttpLoaderConfig_V1 c = new RdfHttpLoaderConfig_V1();
@@ -165,7 +171,6 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         inputType.addItem("File");
         inputType.setItemEnabled("File", false);
         inputType.addItem("SPARQL Update");
-        //inputType.setItemEnabled("Query", false);
         inputType.addValueChangeListener(new Property.ValueChangeListener() {
             @Override
             public void valueChange(Property.ValueChangeEvent event) {
@@ -207,7 +212,20 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         update.setRequired(false);
         update.setEnabled(false);
         update.setWidth("100%");
-        update.setHeightUndefined();
+        update.addValidator(new Validator() {
+            @Override
+            public void validate(Object o) throws InvalidValueException {
+                final String update = o.toString();
+                if (update == null || update.isEmpty()) {
+                    throw new InvalidValueException(ctx.tr("RdfHttpLoader.dialog.error.update"));
+                }
+                try {
+                    QueryParserUtil.parseUpdate(QueryLanguage.SPARQL, update, null);
+                } catch (MalformedQueryException ex) {
+                    throw new InvalidValueException(ctx.tr("RdfHttpLoader.dialog.error.update") + " " + ex.getMessage());
+                }
+            }
+        });
         mainLayout.addComponent(update, 0, 4, 3, 7);
 
         setCompositionRoot(mainLayout);
