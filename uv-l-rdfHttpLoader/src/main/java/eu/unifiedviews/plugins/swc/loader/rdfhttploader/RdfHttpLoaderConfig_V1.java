@@ -1,8 +1,5 @@
 package eu.unifiedviews.plugins.swc.loader.rdfhttploader;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
  * Configuration class for RdfHttpLoader.
  *
@@ -17,7 +14,7 @@ public class RdfHttpLoaderConfig_V1 {
     private String update = "";
     private boolean ssl = false;
     private boolean authentication = false;
-    private boolean singleGraph = false;
+    private boolean setGraph = false;
     private String graphUri = "DEFAULT";
     private String inputType = "RDF";
 
@@ -93,12 +90,12 @@ public class RdfHttpLoaderConfig_V1 {
         this.inputType = inputType;
     }
 
-    public boolean isSingleGraph() {
-        return singleGraph;
+    public boolean isSetGraph() {
+        return setGraph;
     }
 
-    public void setSingleGraph(boolean singleGraph) {
-        this.singleGraph = singleGraph;
+    public void setSetGraph(boolean setGraph) {
+        this.setGraph = setGraph;
     }
 
     public String getGraphUri() {

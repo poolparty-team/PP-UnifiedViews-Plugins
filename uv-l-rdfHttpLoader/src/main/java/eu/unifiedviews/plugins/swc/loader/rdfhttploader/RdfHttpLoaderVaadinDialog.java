@@ -5,14 +5,8 @@ import com.vaadin.data.Validator;
 import com.vaadin.data.validator.RegexpValidator;
 import com.vaadin.data.validator.StringLengthValidator;
 import com.vaadin.ui.*;
-import com.vaadin.ui.themes.ValoTheme;
 import eu.unifiedviews.dpu.config.DPUConfigException;
 import eu.unifiedviews.helpers.dpu.vaadin.dialog.AbstractDialog;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.regex.Pattern;
 
 /**
  * Vaadin configuration dialog for RdfHttpLoader.
@@ -29,7 +23,7 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
     private CheckBox ssl;
     private CheckBox authentication;
     private OptionGroup inputType;
-    private CheckBox singleGraph;
+    private CheckBox setGraph;
     private TextField graphUri;
 
     public RdfHttpLoaderVaadinDialog() {
@@ -47,7 +41,7 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         ssl.setValue(c.isSsl());
         authentication.setValue(c.isAuthentication());
         inputType.setValue(c.getInputType());
-        singleGraph.setValue(c.isSingleGraph());
+        setGraph.setValue(c.isSetGraph());
         graphUri.setValue(c.getGraphUri());
     }
 
@@ -59,14 +53,17 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         if (!port.isValid()) {
             throw new DPUConfigException(ctx.tr("RdfHttpLoader.dialog.error.port"));
         }
+        if (!sparqlEndpoint.isValid()) {
+            throw new DPUConfigException(ctx.tr("RdfHttpLoader.dialog.error.sparqlEndpoint"));
+        }
         if (!username.isValid()) {
             throw new DPUConfigException(ctx.tr("RdfHttpLoader.dialog.error.username"));
         }
         if (!password.isValid()) {
             throw new DPUConfigException(ctx.tr("RdfHttpLoader.dialog.error.password"));
         }
-        if (!graphUri.isValid()) {
-            throw new DPUConfigException(ctx.tr("regex"));
+        if (graphUri.isEnabled() && !graphUri.isValid()) {
+            throw new DPUConfigException(ctx.tr("RdfHttpLoader.dialog.error.graph"));
         }
 
         final RdfHttpLoaderConfig_V1 c = new RdfHttpLoaderConfig_V1();
@@ -79,7 +76,7 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         c.setSsl(ssl.getValue());
         c.setAuthentication(authentication.getValue());
         c.setInputType(inputType.getValue().toString());
-        c.setSingleGraph(singleGraph.getValue());
+        c.setSetGraph(setGraph.getValue());
         c.setGraphUri(graphUri.getValue());
 
         return c;
@@ -92,7 +89,6 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         mainLayout.setMargin(true);
         mainLayout.setSpacing(true);
         mainLayout.setDefaultComponentAlignment(Alignment.MIDDLE_LEFT);
-        //mainLayout.setColumnExpandRatio(1, 0.5f);
 
         host = new TextField(ctx.tr("RdfHttpLoader.dialog.host"));
         host.setRequired(true);
@@ -128,15 +124,14 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         sparqlEndpoint = new TextField(ctx.tr("RdfHttpLoader.dialog.sparqlEndpoint"));
         sparqlEndpoint.setWidth("100%");
         sparqlEndpoint.setRequired(true);
-        sparqlEndpoint.addValidator(new StringLengthValidator(ctx.tr("RdfHttpLoader.dialog.error.sparqlEndpoint"),
-                5, null, false));
+        sparqlEndpoint.addValidator(new RegexpValidator("(?i)\\/sparql|query|update", false, ctx.tr("RdfHttpLoader.dialog.error.sparqlEndpoint")));
         mainLayout.addComponent(sparqlEndpoint, 2, 0, 2, 0);
 
-        ssl = new CheckBox("TLS/SSL (Trust All)", false);
+        ssl = new CheckBox(ctx.tr("RdfHttpLoader.dialog.ssl"), false);
         ssl.setEnabled(false);
         mainLayout.addComponent(ssl, 0, 1, 0, 1);
 
-        authentication = new CheckBox("Basic Authentication", false);
+        authentication = new CheckBox(ctx.tr("RdfHttpLoader.dialog.auth"), false);
         authentication.setImmediate(true);
         authentication.addValueChangeListener(new Property.ValueChangeListener() {
             @Override
@@ -160,7 +155,7 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         password.setEnabled(false);
         mainLayout.addComponent(password, 3, 1, 3, 1);
 
-        inputType = new OptionGroup("Input Type");
+        inputType = new OptionGroup(ctx.tr("RdfHttpLoader.dialog.input"));
         inputType.setMultiSelect(false);
         inputType.setImmediate(true);
         inputType.setNullSelectionAllowed(false);
@@ -169,42 +164,46 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         inputType.setValue("RDF");
         inputType.addItem("File");
         inputType.setItemEnabled("File", false);
-        inputType.addItem("Query");
+        inputType.addItem("SPARQL Update");
         //inputType.setItemEnabled("Query", false);
         inputType.addValueChangeListener(new Property.ValueChangeListener() {
             @Override
             public void valueChange(Property.ValueChangeEvent event) {
-                if (event.getProperty().getValue().equals("Query")) {
+                if (event.getProperty().getValue().equals("SPARQL Update")) {
                     update.setEnabled(true);
                     update.setRequired(true);
+                    setGraph.setEnabled(false);
+                    graphUri.setEnabled(false);
                 } else {
                     update.setEnabled(false);
                     update.setRequired(false);
+                    setGraph.setEnabled(true);
+                    graphUri.setEnabled(true);
                 }
             }
         });
         mainLayout.addComponent(inputType, 0, 2, 1, 3);
 
-        singleGraph = new CheckBox("Specify Target Graph", false);
-        singleGraph.setImmediate(true);
-        singleGraph.addValueChangeListener(new Property.ValueChangeListener() {
+        setGraph = new CheckBox(ctx.tr("RdfHttpLoader.dialog.setGraph"), false);
+        setGraph.setImmediate(true);
+        setGraph.addValueChangeListener(new Property.ValueChangeListener() {
             @Override
             public void valueChange(Property.ValueChangeEvent event) {
                 graphUri.setEnabled((boolean) event.getProperty().getValue());
                 graphUri.setRequired((boolean) event.getProperty().getValue());
             }
         });
-        mainLayout.addComponent(singleGraph, 2, 2, 2, 2);
+        mainLayout.addComponent(setGraph, 2, 2, 2, 2);
 
-        graphUri = new TextField("Graph URI");
+        graphUri = new TextField(ctx.tr("RdfHttpLoader.dialog.graphUri"));
         graphUri.setRequired(false);
         graphUri.setEnabled(false);
         graphUri.setWidth("100%");
-        graphUri.addValidator(new RegexpValidator("(?i)^[a-zA-Z][a-zA-Z0-9\\+\\._]*:|^default$", false, "regex"));
+        graphUri.addValidator(new RegexpValidator("(?i)^[a-zA-Z][a-zA-Z0-9\\+\\._]*:|^default$", false, ctx.tr("RdfHttpLoader.dialog.error.graphUri")));
         mainLayout.addComponent(graphUri, 2, 3, 3, 3);
 
 
-        update = new TextArea("SPARQL Update Query");
+        update = new TextArea(ctx.tr("RdfHttpLoader.dialog.update"));
         update.setRequired(false);
         update.setEnabled(false);
         update.setWidth("100%");
