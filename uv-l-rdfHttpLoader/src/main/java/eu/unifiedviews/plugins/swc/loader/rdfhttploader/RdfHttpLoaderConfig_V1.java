@@ -18,7 +18,7 @@ public class RdfHttpLoaderConfig_V1 {
     private boolean ssl = false;
     private boolean authentication = false;
     private boolean singleGraph = false;
-    private String graphUri = "default";
+    private String graphUri = "DEFAULT";
     private String inputType = "RDF";
 
     public String getHost() {

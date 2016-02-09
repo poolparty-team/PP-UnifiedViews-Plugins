@@ -5,6 +5,7 @@ import com.vaadin.data.Validator;
 import com.vaadin.data.validator.RegexpValidator;
 import com.vaadin.data.validator.StringLengthValidator;
 import com.vaadin.ui.*;
+import com.vaadin.ui.themes.ValoTheme;
 import eu.unifiedviews.dpu.config.DPUConfigException;
 import eu.unifiedviews.helpers.dpu.vaadin.dialog.AbstractDialog;
 
@@ -53,16 +54,16 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
     @Override
     public RdfHttpLoaderConfig_V1 getConfiguration() throws DPUConfigException {
         if (!host.isValid()) {
-            throw new DPUConfigException(ctx.tr("ConceptExtractor.dialog.error.host"));
+            throw new DPUConfigException(ctx.tr("RdfHttpLoader.dialog.error.host"));
         }
         if (!port.isValid()) {
-            throw new DPUConfigException(ctx.tr("ConceptExtractor.dialog.error.port"));
+            throw new DPUConfigException(ctx.tr("RdfHttpLoader.dialog.error.port"));
         }
         if (!username.isValid()) {
-            throw new DPUConfigException(ctx.tr("ConceptExtractor.dialog.error.username"));
+            throw new DPUConfigException(ctx.tr("RdfHttpLoader.dialog.error.username"));
         }
         if (!password.isValid()) {
-            throw new DPUConfigException(ctx.tr("ConceptExtractor.dialog.error.password"));
+            throw new DPUConfigException(ctx.tr("RdfHttpLoader.dialog.error.password"));
         }
         if (!graphUri.isValid()) {
             throw new DPUConfigException(ctx.tr("regex"));
@@ -86,27 +87,27 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
 
     @Override
     public void buildDialogLayout() {
-        final GridLayout mainLayout = new GridLayout(2, 8);
+        final GridLayout mainLayout = new GridLayout(4, 8);
+        mainLayout.setSizeFull();
         mainLayout.setMargin(true);
         mainLayout.setSpacing(true);
         mainLayout.setDefaultComponentAlignment(Alignment.MIDDLE_LEFT);
-        mainLayout.setColumnExpandRatio(1, 0.5f);
+        //mainLayout.setColumnExpandRatio(1, 0.5f);
 
-        host = new TextField(ctx.tr("ConceptExtractor.dialog.host"));
-        host.setWidth("400px");
+        host = new TextField(ctx.tr("RdfHttpLoader.dialog.host"));
         host.setRequired(true);
+        host.setWidth("100%");
         host.addValidator(new Validator() {
             @Override
             public void validate(Object o) throws InvalidValueException {
                 if (o.toString().startsWith("http://") || o.toString().startsWith("https://")) {
-                    throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.host"));
+                    throw new InvalidValueException(ctx.tr("RdfHttpLoader.dialog.error.host"));
                 }
             }
         });
-        mainLayout.addComponent(host, 0, 0, 0, 0);
+        mainLayout.addComponent(host, 0, 0, 1, 0);
 
-        port = new TextField(ctx.tr("ConceptExtractor.dialog.port"));
-        port.setWidth("200px");
+        port = new TextField(ctx.tr("RdfHttpLoader.dialog.port"));
         port.setRequired(true);
         port.addValidator(new Validator() {
             @Override
@@ -115,27 +116,27 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
                 try {
                     port = Integer.parseInt(o.toString());
                 } catch (Exception e) {
-                    throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.port"));
+                    throw new InvalidValueException(ctx.tr("RdfHttpLoader.dialog.error.port"));
                 }
                 if (port < 0 || port > 65535) {
-                    throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.port"));
+                    throw new InvalidValueException(ctx.tr("RdfHttpLoader.dialog.error.port"));
                 }
             }
         });
-        mainLayout.addComponent(port, 1, 0, 1, 0);
+        mainLayout.addComponent(port, 3, 0, 3, 0);
 
-        sparqlEndpoint = new TextField(ctx.tr("ConceptExtractor.dialog.sparqlEndpoint"));
-        sparqlEndpoint.setWidth("400px");
+        sparqlEndpoint = new TextField(ctx.tr("RdfHttpLoader.dialog.sparqlEndpoint"));
+        sparqlEndpoint.setWidth("100%");
         sparqlEndpoint.setRequired(true);
-        sparqlEndpoint.addValidator(new StringLengthValidator(ctx.tr("ConceptExtractor.dialog.error.sparqlEndpoint"),
+        sparqlEndpoint.addValidator(new StringLengthValidator(ctx.tr("RdfHttpLoader.dialog.error.sparqlEndpoint"),
                 5, null, false));
-        mainLayout.addComponent(sparqlEndpoint, 0, 1, 0, 1);
+        mainLayout.addComponent(sparqlEndpoint, 2, 0, 2, 0);
 
-        ssl = new CheckBox("ssl", false);
-        ssl.setRequired(true);
-        //mainLayout.addComponent(ssl, 1, 1, 1, 1);
+        ssl = new CheckBox("TLS/SSL (Trust All)", false);
+        ssl.setEnabled(false);
+        mainLayout.addComponent(ssl, 0, 1, 0, 1);
 
-        authentication = new CheckBox("auth", false);
+        authentication = new CheckBox("Basic Authentication", false);
         authentication.setImmediate(true);
         authentication.addValueChangeListener(new Property.ValueChangeListener() {
             @Override
@@ -149,17 +150,15 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         });
         mainLayout.addComponent(authentication, 1, 1, 1, 1);
 
-        username = new TextField(ctx.tr("ConceptExtractor.dialog.username"));
-        username.setWidth("200px");
+        username = new TextField(ctx.tr("RdfHttpLoader.dialog.username"));
         username.setRequired(false);
         username.setEnabled(false);
-        mainLayout.addComponent(username, 0, 2, 0, 2);
+        mainLayout.addComponent(username, 2, 1, 2, 1);
 
-        password = new PasswordField(ctx.tr("ConceptExtractor.dialog.password"));
-        password.setWidth("200px");
+        password = new PasswordField(ctx.tr("RdfHttpLoader.dialog.password"));
         password.setRequired(false);
         password.setEnabled(false);
-        mainLayout.addComponent(password, 1, 2, 1, 2);
+        mainLayout.addComponent(password, 3, 1, 3, 1);
 
         inputType = new OptionGroup("Input Type");
         inputType.setMultiSelect(false);
@@ -184,9 +183,9 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
                 }
             }
         });
-        mainLayout.addComponent(inputType, 0, 3, 1, 3);
+        mainLayout.addComponent(inputType, 0, 2, 1, 3);
 
-        singleGraph = new CheckBox("Export to Single Graph", false);
+        singleGraph = new CheckBox("Specify Target Graph", false);
         singleGraph.setImmediate(true);
         singleGraph.addValueChangeListener(new Property.ValueChangeListener() {
             @Override
@@ -195,20 +194,22 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
                 graphUri.setRequired((boolean) event.getProperty().getValue());
             }
         });
-        mainLayout.addComponent(singleGraph, 0, 4, 0, 4);
+        mainLayout.addComponent(singleGraph, 2, 2, 2, 2);
 
         graphUri = new TextField("Graph URI");
-        graphUri.setWidth("200px");
         graphUri.setRequired(false);
         graphUri.setEnabled(false);
-        graphUri.addValidator(new RegexpValidator("^[a-zA-Z][a-zA-Z0-9\\+\\._]*:", false, "regex"));
-        mainLayout.addComponent(graphUri, 1, 4, 1, 4);
+        graphUri.setWidth("100%");
+        graphUri.addValidator(new RegexpValidator("(?i)^[a-zA-Z][a-zA-Z0-9\\+\\._]*:|^default$", false, "regex"));
+        mainLayout.addComponent(graphUri, 2, 3, 3, 3);
 
 
         update = new TextArea("SPARQL Update Query");
         update.setRequired(false);
         update.setEnabled(false);
-        mainLayout.addComponent(update, 0, 5, 1, 7);
+        update.setWidth("100%");
+        update.setHeightUndefined();
+        mainLayout.addComponent(update, 0, 4, 3, 7);
 
         setCompositionRoot(mainLayout);
     }
