@@ -27,6 +27,7 @@ import org.apache.http.impl.client.BasicAuthCache;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
 import org.openrdf.model.*;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryResult;
@@ -182,11 +183,16 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
             httpPost.setEntity(new StringEntity(update, ContentType.create("application/sparql-update", StandardCharsets.UTF_8)));
             CloseableHttpResponse response = wrapper.client.execute(wrapper.host, httpPost, wrapper.context);
             int status = response.getStatusLine().getStatusCode();
+            String message = EntityUtils.toString(response.getEntity());
+            if (message.length() > 1000) {
+                message = message.substring(0, 1000) + "\n ...";
+            }
             response.close();
             if (status == HttpStatus.SC_OK) {
                 return true;
             } else {
-                throw new DPUException("HTTP request failed with a response code " + status);
+                LOG.error(message);
+                throw new DPUException("HTTP request failed with a response code " + status + ", please check server response in logs");
             }
         } catch (Exception e) {
             throw new DPUException("Encountered an exception when sending request to the remote SPARQL endpoint", e);
