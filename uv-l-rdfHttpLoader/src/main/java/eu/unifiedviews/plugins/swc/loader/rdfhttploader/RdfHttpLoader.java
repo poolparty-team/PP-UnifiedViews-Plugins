@@ -83,7 +83,7 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
             if (targetGraphUri.toLowerCase().equals("default")) {
                 update = UPDATE_TEMPLATE;
             } else {
-                update = String.format(UPDATE_TEMPLATE, String.format(GRAPH_TEMPLATE, targetGraphUri));
+                update = String.format(UPDATE_TEMPLATE, String.format(GRAPH_TEMPLATE, targetGraphUri, "%s"));
             }
             final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, rdfInput, RDFDataUnit.Entry.class);
             for (RDFDataUnit.Entry entry : entries) {
@@ -116,7 +116,23 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
         }
 
         if (config.getInputType().equals("Query")) {
-
+            ContextUtils.sendShortInfo(ctx, "Start executing update query: " + config.getUpdate());
+            int trial = 0;
+            while (true) {
+                if (ctx.canceled()) {
+                    throw ContextUtils.dpuExceptionCancelled(ctx);
+                }
+                try {
+                    trial ++;
+                    LOG.info("Start Trial " + trial + " in updating the remote store");
+                    updateRemoteStore(httpWrapper, config.getUpdate());
+                    LOG.info("Update committed successfully in Trial " + trial);
+                    break;
+                } catch (DPUException e) {
+                    if (trial == MAX_RETRY) throw e;
+                }
+            }
+            ContextUtils.sendShortInfo(ctx, "Finish update");
         }
     }
 
@@ -155,7 +171,7 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
      */
     private boolean updateRemoteStore(HttpStateWrapper wrapper, String update) throws DPUException {
         try {
-            HttpPost httpPost = new HttpPost(wrapper.host.toURI());
+            HttpPost httpPost = new HttpPost(wrapper.host.toURI() + config.getSparqlEndpoint());
             /*
             MultipartEntityBuilder entityBuilder = MultipartEntityBuilder.create();
             entityBuilder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
