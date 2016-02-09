@@ -2,6 +2,7 @@ package eu.unifiedviews.plugins.swc.loader.rdfhttploader;
 
 import com.vaadin.data.Property;
 import com.vaadin.data.Validator;
+import com.vaadin.data.validator.RegexpValidator;
 import com.vaadin.data.validator.StringLengthValidator;
 import com.vaadin.ui.*;
 import eu.unifiedviews.dpu.config.DPUConfigException;
@@ -10,6 +11,7 @@ import eu.unifiedviews.helpers.dpu.vaadin.dialog.AbstractDialog;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.regex.Pattern;
 
 /**
  * Vaadin configuration dialog for RdfHttpLoader.
@@ -62,6 +64,9 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         if (!password.isValid()) {
             throw new DPUConfigException(ctx.tr("ConceptExtractor.dialog.error.password"));
         }
+        if (!graphUri.isValid()) {
+            throw new DPUConfigException(ctx.tr("regex"));
+        }
 
         final RdfHttpLoaderConfig_V1 c = new RdfHttpLoaderConfig_V1();
         c.setHost(host.getValue());
@@ -85,7 +90,6 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         mainLayout.setMargin(true);
         mainLayout.setSpacing(true);
         mainLayout.setDefaultComponentAlignment(Alignment.MIDDLE_LEFT);
-        mainLayout.setColumnExpandRatio(0, 0.5f);
         mainLayout.setColumnExpandRatio(1, 0.5f);
 
         host = new TextField(ctx.tr("ConceptExtractor.dialog.host"));
@@ -129,30 +133,31 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
 
         ssl = new CheckBox("ssl", false);
         ssl.setRequired(true);
-        mainLayout.addComponent(ssl, 1, 1, 1, 1);
+        //mainLayout.addComponent(ssl, 1, 1, 1, 1);
 
         authentication = new CheckBox("auth", false);
-        authentication.setRequired(true);
         authentication.setImmediate(true);
         authentication.addValueChangeListener(new Property.ValueChangeListener() {
             @Override
             public void valueChange(Property.ValueChangeEvent event) {
                 boolean value = (boolean) event.getProperty().getValue();
                 username.setEnabled(value);
+                username.setRequired(value);
                 password.setEnabled(value);
+                password.setRequired(value);
             }
         });
         mainLayout.addComponent(authentication, 1, 1, 1, 1);
 
         username = new TextField(ctx.tr("ConceptExtractor.dialog.username"));
         username.setWidth("200px");
-        username.setRequired(true);
+        username.setRequired(false);
         username.setEnabled(false);
         mainLayout.addComponent(username, 0, 2, 0, 2);
 
         password = new PasswordField(ctx.tr("ConceptExtractor.dialog.password"));
         password.setWidth("200px");
-        password.setRequired(true);
+        password.setRequired(false);
         password.setEnabled(false);
         mainLayout.addComponent(password, 1, 2, 1, 2);
 
@@ -166,39 +171,42 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         inputType.addItem("File");
         inputType.setItemEnabled("File", false);
         inputType.addItem("Query");
-        inputType.setItemEnabled("Query", false);
+        //inputType.setItemEnabled("Query", false);
         inputType.addValueChangeListener(new Property.ValueChangeListener() {
             @Override
             public void valueChange(Property.ValueChangeEvent event) {
                 if (event.getProperty().getValue().equals("Query")) {
                     update.setEnabled(true);
+                    update.setRequired(true);
                 } else {
                     update.setEnabled(false);
+                    update.setRequired(false);
                 }
             }
         });
         mainLayout.addComponent(inputType, 0, 3, 1, 3);
 
         singleGraph = new CheckBox("Export to Single Graph", false);
-        singleGraph.setRequired(true);
         singleGraph.setImmediate(true);
         singleGraph.addValueChangeListener(new Property.ValueChangeListener() {
             @Override
             public void valueChange(Property.ValueChangeEvent event) {
                 graphUri.setEnabled((boolean) event.getProperty().getValue());
+                graphUri.setRequired((boolean) event.getProperty().getValue());
             }
         });
         mainLayout.addComponent(singleGraph, 0, 4, 0, 4);
 
         graphUri = new TextField("Graph URI");
         graphUri.setWidth("200px");
-        graphUri.setRequired(true);
+        graphUri.setRequired(false);
         graphUri.setEnabled(false);
+        graphUri.addValidator(new RegexpValidator("^[a-zA-Z][a-zA-Z0-9\\+\\._]*:", false, "regex"));
         mainLayout.addComponent(graphUri, 1, 4, 1, 4);
 
 
         update = new TextArea("SPARQL Update Query");
-        update.setRequired(true);
+        update.setRequired(false);
         update.setEnabled(false);
         mainLayout.addComponent(update, 0, 5, 1, 7);
 
