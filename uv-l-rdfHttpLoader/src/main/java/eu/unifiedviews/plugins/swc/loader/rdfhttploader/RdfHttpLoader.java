@@ -116,8 +116,8 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
 
         }
 
-        if (config.getInputType().equals("Query")) {
-            ContextUtils.sendShortInfo(ctx, "Start executing update query: " + config.getUpdate());
+        if (config.getInputType().equals("SPARQL Update")) {
+            ContextUtils.sendInfo(ctx, "Start executing update query", "Update:\n-------\n" + config.getUpdate());
             int trial = 0;
             while (true) {
                 if (ctx.canceled()) {
