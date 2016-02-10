@@ -23,6 +23,7 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.client.utils.HttpClientUtils;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.FileEntity;
@@ -40,6 +41,7 @@ import org.openrdf.rio.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -213,40 +215,44 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
      * @throws DPUException
      */
     private boolean updateRemoteStore(HttpStateWrapper wrapper, HttpEntity entity, String graphParam) throws DPUException {
+        String requestUrl;
+        int status;
+        String message;
+        CloseableHttpResponse response = null;
+        if (graphParam == null) {
+            requestUrl = wrapper.host.toURI() + config.getSparqlEndpoint();
+        } else {
+            requestUrl = wrapper.host.toURI() + config.getSparqlEndpoint() + graphParam;
+        }
+        HttpPost httpPost = new HttpPost(requestUrl);
+        /*
+        MultipartEntityBuilder entityBuilder = MultipartEntityBuilder.create();
+        entityBuilder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
+        if (file != null) {
+            entityBuilder.addBinaryBody("file", file, ContentType.DEFAULT_BINARY, file.getName());
+        }
+        */
+        httpPost.setEntity(entity);
         try {
-            String requestUrl;
-            if (graphParam == null) {
-                requestUrl = wrapper.host.toURI() + config.getSparqlEndpoint();
-            } else {
-                requestUrl = wrapper.host.toURI() + config.getSparqlEndpoint() + graphParam;
-            }
-            HttpPost httpPost = new HttpPost(requestUrl);
-            /*
-            MultipartEntityBuilder entityBuilder = MultipartEntityBuilder.create();
-            entityBuilder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
-            if (file != null) {
-                entityBuilder.addBinaryBody("file", file, ContentType.DEFAULT_BINARY, file.getName());
-            }
-            */
-            httpPost.setEntity(entity);
-            CloseableHttpResponse response = wrapper.client.execute(wrapper.host, httpPost, wrapper.context);
-            int status = response.getStatusLine().getStatusCode();
-            String message = EntityUtils.toString(response.getEntity());
+            response = wrapper.client.execute(wrapper.host, httpPost, wrapper.context);
+            status = response.getStatusLine().getStatusCode();
+            message = EntityUtils.toString(response.getEntity());
             if (message.length() > 1000) {
                 message = message.substring(0, 1000) + "\n ...";
             }
-            response.close();
-            if (status < 300 ) {
-                LOG.info("HTTP request succeeded with a response code " + status + ", please check next log for possible server response");
-                LOG.info("The remote store returned a message: " + message);
-                return true;
-            } else {
-                LOG.error("HTTP request failed with a response code " + status + ", please check next log for possible server response");
-                LOG.error("The remote store returned a message: " + message);
-                throw new DPUException("HTTP request failed with a response code " + status + ", please check next log for possible server response");
-            }
         } catch (Exception e) {
             throw new DPUException("Encountered an exception when sending request to the remote SPARQL endpoint", e);
+        } finally {
+            HttpClientUtils.closeQuietly(response);
+        }
+        if (status < 300 ) {
+            LOG.info("HTTP request succeeded with a response code " + status + ", please check next log for possible server response");
+            LOG.info("The remote store returned a message: " + message);
+            return true;
+        } else {
+            LOG.error("HTTP request failed with a response code " + status + ", please check next log for possible server response");
+            LOG.error("The remote store returned a message: " + message);
+            throw new DPUException("HTTP request failed with a response code " + status + ", please check next log for possible server response");
         }
     }
 
