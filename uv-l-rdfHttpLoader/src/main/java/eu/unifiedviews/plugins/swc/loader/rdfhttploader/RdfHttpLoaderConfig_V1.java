@@ -17,6 +17,7 @@ public class RdfHttpLoaderConfig_V1 {
     private boolean setGraph = false;
     private String graphUri = "DEFAULT";
     private String inputType = "RDF";
+    private String contentType = "Turtle";
 
     public String getHost() {
         return host;
@@ -104,5 +105,13 @@ public class RdfHttpLoaderConfig_V1 {
 
     public void setGraphUri(String graphUri) {
         this.graphUri = graphUri;
+    }
+
+    public String getContentType() {
+        return contentType;
+    }
+
+    public void setContentType(String contentType) {
+        this.contentType = contentType;
     }
 }

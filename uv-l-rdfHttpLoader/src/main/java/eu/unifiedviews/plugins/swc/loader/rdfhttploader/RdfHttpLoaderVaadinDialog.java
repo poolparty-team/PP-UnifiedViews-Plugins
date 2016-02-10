@@ -28,6 +28,7 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
     private OptionGroup inputType;
     private CheckBox setGraph;
     private TextField graphUri;
+    private NativeSelect contentType;
 
     public RdfHttpLoaderVaadinDialog() {
         super(RdfHttpLoader.class);
@@ -46,6 +47,7 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         inputType.setValue(c.getInputType());
         setGraph.setValue(c.isSetGraph());
         graphUri.setValue(c.getGraphUri());
+        contentType.setValue(c.getContentType());
     }
 
     @Override
@@ -84,7 +86,7 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         c.setInputType(inputType.getValue().toString());
         c.setSetGraph(setGraph.getValue());
         c.setGraphUri(graphUri.getValue());
-
+        c.setContentType(contentType.getValue().toString());
         return c;
     }
 
@@ -167,9 +169,7 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         inputType.setNullSelectionAllowed(false);
         inputType.setRequired(true);
         inputType.addItem("RDF");
-        inputType.setValue("RDF");
         inputType.addItem("File");
-        inputType.setItemEnabled("File", false);
         inputType.addItem("SPARQL Update");
         inputType.addValueChangeListener(new Property.ValueChangeListener() {
             @Override
@@ -179,18 +179,38 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
                     update.setRequired(true);
                     setGraph.setEnabled(false);
                     graphUri.setEnabled(false);
-                } else {
+                    contentType.setEnabled(false);
+                    contentType.setRequired(false);
+                } else if (event.getProperty().getValue().equals("File")) {
                     update.setEnabled(false);
                     update.setRequired(false);
                     setGraph.setEnabled(true);
-                    graphUri.setEnabled(true);
+                    setGraph.setValue(setGraph.getValue());
+                    graphUri.setEnabled(setGraph.getValue());
+                    contentType.setEnabled(true);
+                    contentType.setRequired(true);
+                } else if (event.getProperty().getValue().equals("RDF")) {
+                    update.setEnabled(false);
+                    update.setRequired(false);
+                    setGraph.setEnabled(true);
+                    setGraph.setValue(setGraph.getValue());
+                    graphUri.setEnabled(setGraph.getValue());
+                    contentType.setEnabled(false);
+                    contentType.setRequired(false);
                 }
             }
         });
-        mainLayout.addComponent(inputType, 0, 2, 1, 3);
+        mainLayout.addComponent(inputType, 0, 2, 0, 3);
+
+        contentType = new NativeSelect(ctx.tr("RdfHttpLoader.dialog.contentType"));
+        contentType.setEnabled(false);
+        contentType.addItems("Turtle", "RDF/XML", "N-Triples", "N3", "JSON-LD", "BinaryRDF", "TriX", "TriG", "N-Quads");
+        contentType.setRequired(false);
+        mainLayout.addComponent(contentType, 1, 2, 1, 3);
 
         setGraph = new CheckBox(ctx.tr("RdfHttpLoader.dialog.setGraph"), false);
         setGraph.setImmediate(true);
+        setGraph.setEnabled(false);
         setGraph.addValueChangeListener(new Property.ValueChangeListener() {
             @Override
             public void valueChange(Property.ValueChangeEvent event) {

@@ -1,16 +1,19 @@
 package eu.unifiedviews.plugins.swc.loader.rdfhttploader;
 
 import eu.unifiedviews.dataunit.DataUnit;
+import eu.unifiedviews.dataunit.DataUnitException;
 import eu.unifiedviews.dataunit.files.FilesDataUnit;
 import eu.unifiedviews.dataunit.rdf.RDFDataUnit;
 import eu.unifiedviews.dpu.DPU;
 import eu.unifiedviews.dpu.DPUException;
+import eu.unifiedviews.helpers.dataunit.files.FilesHelper;
 import eu.unifiedviews.helpers.dpu.config.ConfigHistory;
 import eu.unifiedviews.helpers.dpu.context.ContextUtils;
 import eu.unifiedviews.helpers.dpu.exec.AbstractDpu;
 import eu.unifiedviews.helpers.dpu.extension.ExtensionInitializer;
 import eu.unifiedviews.helpers.dpu.extension.faulttolerance.FaultTolerance;
 import eu.unifiedviews.helpers.dpu.extension.faulttolerance.FaultToleranceUtils;
+import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpStatus;
 import org.apache.http.auth.AuthScope;
@@ -20,7 +23,9 @@ import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.protocol.HttpClientContext;
+import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.entity.ContentType;
+import org.apache.http.entity.FileEntity;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicAuthCache;
@@ -36,6 +41,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.StringWriter;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 
@@ -101,7 +108,7 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
                     try {
                         trial ++;
                         LOG.info("Start Trial " + trial + " in updating the remote store");
-                        updateRemoteStore(httpWrapper, String.format(update, rdfStringWriter.toString()));
+                        updateRemoteStore(httpWrapper, new StringEntity(String.format(update, rdfStringWriter.toString()), ContentType.create("application/sparql-update", StandardCharsets.UTF_8)), null);
                         LOG.info("Update committed successfully in Trial " + trial);
                         break;
                     } catch (DPUException e) {
@@ -113,7 +120,42 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
         }
 
         if (fileInput != null && config.getInputType().equals("File")) {
-
+            String graphParam = null;
+            if (config.isSetGraph()) {
+                if (config.getGraphUri().toLowerCase().equals("default")) {
+                    graphParam = "?default";
+                } else {
+                    try {
+                        graphParam = "?graph=" + URLEncoder.encode(config.getGraphUri(), "UTF-8");
+                    } catch (UnsupportedEncodingException e) {
+                        throw new DPUException("Graph URI cannot be encoded as URL", e);
+                    }
+                }
+            }
+            final List<FilesDataUnit.Entry> fileEntries = FaultToleranceUtils.getEntries(faultTolerance, fileInput, FilesDataUnit.Entry.class);
+            for (FilesDataUnit.Entry entry : fileEntries) {
+                try {
+                    ContextUtils.sendShortInfo(ctx, "Start posting file " + entry.getSymbolicName() + " to remote store");
+                    int trial = 0;
+                    while (true) {
+                        if (ctx.canceled()) {
+                            throw ContextUtils.dpuExceptionCancelled(ctx);
+                        }
+                        try {
+                            trial ++;
+                            LOG.info("Start Trial " + trial + " in updating the remote store");
+                            updateRemoteStore(httpWrapper, new FileEntity(FilesHelper.asFile(entry), ContentType.create(RDFFormat.valueOf(config.getContentType()).getDefaultMIMEType(), StandardCharsets.UTF_8)), graphParam);
+                            LOG.info("Update committed successfully in Trial " + trial);
+                            break;
+                        } catch (DPUException e) {
+                            if (trial == MAX_RETRY) throw e;
+                        }
+                    }
+                    ContextUtils.sendShortInfo(ctx, "Finish update");
+                } catch (DataUnitException e) {
+                    throw new DPUException("Unable to read the file from files data unit entry", e);
+                }
+            }
         }
 
         if (config.getInputType().equals("SPARQL Update")) {
@@ -126,7 +168,7 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
                 try {
                     trial ++;
                     LOG.info("Start Trial " + trial + " in updating the remote store");
-                    updateRemoteStore(httpWrapper, config.getUpdate());
+                    updateRemoteStore(httpWrapper, new StringEntity(config.getUpdate(), ContentType.create("application/sparql-update", StandardCharsets.UTF_8)), null);
                     LOG.info("Update committed successfully in Trial " + trial);
                     break;
                 } catch (DPUException e) {
@@ -170,9 +212,15 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
      * @return extraction result as an RDF/XML document deserialized to string
      * @throws DPUException
      */
-    private boolean updateRemoteStore(HttpStateWrapper wrapper, String update) throws DPUException {
+    private boolean updateRemoteStore(HttpStateWrapper wrapper, HttpEntity entity, String graphParam) throws DPUException {
         try {
-            HttpPost httpPost = new HttpPost(wrapper.host.toURI() + config.getSparqlEndpoint());
+            String requestUrl;
+            if (graphParam == null) {
+                requestUrl = wrapper.host.toURI() + config.getSparqlEndpoint();
+            } else {
+                requestUrl = wrapper.host.toURI() + config.getSparqlEndpoint() + graphParam;
+            }
+            HttpPost httpPost = new HttpPost(requestUrl);
             /*
             MultipartEntityBuilder entityBuilder = MultipartEntityBuilder.create();
             entityBuilder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
@@ -180,7 +228,7 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
                 entityBuilder.addBinaryBody("file", file, ContentType.DEFAULT_BINARY, file.getName());
             }
             */
-            httpPost.setEntity(new StringEntity(update, ContentType.create("application/sparql-update", StandardCharsets.UTF_8)));
+            httpPost.setEntity(entity);
             CloseableHttpResponse response = wrapper.client.execute(wrapper.host, httpPost, wrapper.context);
             int status = response.getStatusLine().getStatusCode();
             String message = EntityUtils.toString(response.getEntity());
@@ -188,11 +236,14 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
                 message = message.substring(0, 1000) + "\n ...";
             }
             response.close();
-            if (status == HttpStatus.SC_OK) {
+            if (status < 300 ) {
+                LOG.info("HTTP request succeeded with a response code " + status + ", please check next log for possible server response");
+                LOG.info("The remote store returned a message: " + message);
                 return true;
             } else {
-                LOG.error(message);
-                throw new DPUException("HTTP request failed with a response code " + status + ", please check server response in logs");
+                LOG.error("HTTP request failed with a response code " + status + ", please check next log for possible server response");
+                LOG.error("The remote store returned a message: " + message);
+                throw new DPUException("HTTP request failed with a response code " + status + ", please check next log for possible server response");
             }
         } catch (Exception e) {
             throw new DPUException("Encountered an exception when sending request to the remote SPARQL endpoint", e);
