@@ -218,7 +218,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                     ContextUtils.sendShortInfo(ctx, "Extracted " + index + " of " + graphSize + " texts");
                 }
             }
-        } else {
+        } else if (fileInput != null) {
             final List<FilesDataUnit.Entry> fileEntries = FaultToleranceUtils.getEntries(faultTolerance, fileInput, FilesDataUnit.Entry.class);
             int fileSize = fileEntries.size();
             int blockSize = fileSize/10 > 0 ? fileSize/10 : 1;
@@ -265,6 +265,8 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                     }
                 }
             }
+        } else {
+            ContextUtils.sendShortInfo(ctx, "Nothing to do because no input data is found");
         }
     }
 
