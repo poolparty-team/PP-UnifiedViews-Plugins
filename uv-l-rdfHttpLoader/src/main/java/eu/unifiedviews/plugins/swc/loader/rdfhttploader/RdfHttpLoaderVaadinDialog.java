@@ -132,7 +132,7 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         sparqlEndpoint = new TextField(ctx.tr("RdfHttpLoader.dialog.sparqlEndpoint"));
         sparqlEndpoint.setWidth("100%");
         sparqlEndpoint.setRequired(true);
-        sparqlEndpoint.addValidator(new RegexpValidator("(?i)\\/sparql|query|update", false, ctx.tr("RdfHttpLoader.dialog.error.sparqlEndpoint")));
+        //sparqlEndpoint.addValidator(new RegexpValidator("(?i)\\/sparql|query|update", false, ctx.tr("RdfHttpLoader.dialog.error.sparqlEndpoint")));
         mainLayout.addComponent(sparqlEndpoint, 2, 0, 2, 0);
 
         ssl = new CheckBox(ctx.tr("RdfHttpLoader.dialog.ssl"), false);
