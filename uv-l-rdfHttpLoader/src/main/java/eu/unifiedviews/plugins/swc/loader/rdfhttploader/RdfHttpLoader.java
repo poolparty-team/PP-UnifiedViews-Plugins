@@ -60,6 +60,7 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
     private static final String GRAPH_TEMPLATE = "GRAPH <%s> { %s }";
     private static final int MAX_RETRY = 3;
 
+    public String subjects = "";
     public Set<Statement> graphStatements = null;
     public URI internalGraphUri = null;
     StringWriter rdfStringWriter = new StringWriter();
@@ -114,6 +115,11 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
                         LOG.info("Update committed successfully in Trial " + trial);
                         break;
                     } catch (DPUException e) {
+                        try {
+                            Thread.sleep(10000 * trial);
+                        } catch (InterruptedException ie) {
+                            throw new DPUException("Process is interrupted", ie);
+                        }
                         if (trial == MAX_RETRY) throw e;
                     }
                 }
@@ -150,18 +156,52 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
                             LOG.info("Update committed successfully in Trial " + trial);
                             break;
                         } catch (DPUException e) {
+                            Thread.sleep(10000 * trial);
                             if (trial == MAX_RETRY) throw e;
                         }
                     }
                     ContextUtils.sendShortInfo(ctx, "Finish update");
                 } catch (DataUnitException e) {
                     throw new DPUException("Unable to read the file from files data unit entry", e);
+                } catch (InterruptedException ie) {
+                    throw new DPUException("Process is interrupted", ie);
                 }
             }
         }
 
         if (config.getInputType().equals("SPARQL Update")) {
-            ContextUtils.sendInfo(ctx, "Start executing update query", "Update:\n-------\n" + config.getUpdate());
+            ContextUtils.sendInfo(ctx, "Start executing update query", "Update:\n-------\n" + update);
+            /*
+            // Query customization with variables
+            LOG.info("start");
+            update = config.getUpdate();
+            LOG.info(update);
+            if (rdfInput != null && update.contains("##RDF##")) {
+                final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, rdfInput, RDFDataUnit.Entry.class);
+                for (RDFDataUnit.Entry entry : entries) {
+                    internalGraphUri = FaultToleranceUtils.asGraph(faultTolerance, entry);
+                    faultTolerance.execute(rdfInput, new FaultTolerance.ConnectionAction() {
+                        @Override
+                        public void action(RepositoryConnection connection) throws Exception {
+                            RepositoryResult<Statement> repositoryResult = connection.getStatements(null, null, null, false, internalGraphUri);
+
+                            while (repositoryResult.hasNext()) {
+                                if (ctx.canceled()) {
+                                    throw ContextUtils.dpuExceptionCancelled(ctx);
+                                }
+                                subjects = subjects + "<" + repositoryResult.next().getSubject().stringValue() + ">" + ", ";
+                            }
+
+                        }
+                    });
+                }
+                if (!subjects.equals("")) {
+                    subjects = subjects.substring(0, subjects.length() - 2);
+                }
+                update = update.replaceAll("##RDF##", subjects);
+            }
+            LOG.info(update);
+            */
             int trial = 0;
             while (true) {
                 if (ctx.canceled()) {
@@ -236,9 +276,13 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
         try {
             response = wrapper.client.execute(wrapper.host, httpPost, wrapper.context);
             status = response.getStatusLine().getStatusCode();
-            message = EntityUtils.toString(response.getEntity());
-            if (message.length() > 1000) {
-                message = message.substring(0, 1000) + "\n ...";
+            if (response.getEntity() != null) {
+                message = EntityUtils.toString(response.getEntity());
+                if (message.length() > 1000) {
+                    message = message.substring(0, 1000) + "\n ...";
+                }
+            } else {
+                message = "No content";
             }
         } catch (Exception e) {
             throw new DPUException("Encountered an exception when sending request to the remote SPARQL endpoint", e);
