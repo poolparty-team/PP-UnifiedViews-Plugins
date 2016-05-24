@@ -31,6 +31,7 @@ public class FileWithoutUriExtractionTest {
     private static ConceptExtractor extractor;
     private static TestEnvironment env;
     private static WritableRDFDataUnit output;
+    private static WritableRDFDataUnit failedExtractionOutput;
     private static WritableRDFDataUnit input;
     private static WritableFilesDataUnit fileInput;
     private static RepositoryConnection connection;
@@ -44,6 +45,7 @@ public class FileWithoutUriExtractionTest {
 
         fileInput = env.createFilesInput("fileInput");
         output = env.createRdfOutput("rdfOutput", false);
+        failedExtractionOutput = env.createRdfOutput("failedExtractionOutput", false);
 
         File inputFile = new File(java.net.URI.create(fileInput.addNewFile("file1.txt")));
         try (FileOutputStream fout = new FileOutputStream(inputFile)) {

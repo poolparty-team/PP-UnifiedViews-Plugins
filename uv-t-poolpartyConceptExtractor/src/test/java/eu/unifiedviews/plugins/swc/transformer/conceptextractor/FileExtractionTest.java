@@ -32,6 +32,7 @@ public class FileExtractionTest {
     private static ConceptExtractor extractor;
     private static TestEnvironment env;
     private static WritableRDFDataUnit output;
+    private static WritableRDFDataUnit failedExtractionOutput;
     private static WritableRDFDataUnit input;
     private static WritableFilesDataUnit fileInput;
     private static RepositoryConnection connection;
@@ -46,6 +47,7 @@ public class FileExtractionTest {
         input = env.createRdfInput("rdfInput", false);
         fileInput = env.createFilesInput("fileInput");
         output = env.createRdfOutput("rdfOutput", false);
+        failedExtractionOutput = env.createRdfOutput("failedExtractionOutput", false);
 
         InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream("file.ttl");
 

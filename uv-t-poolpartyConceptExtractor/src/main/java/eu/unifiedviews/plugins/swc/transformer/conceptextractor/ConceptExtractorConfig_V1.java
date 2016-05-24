@@ -19,8 +19,8 @@ public class ConceptExtractorConfig_V1 {
     private String extractionModelApi = "/PoolParty/api/indexbuilder";
     private String username = "";
     private String password = "";
-    private String numberOfConcepts = "";
-    private String numberOfTerms = "";
+    private String numberOfConcepts = "25";
+    private String numberOfTerms = "0";
     private String corpusScoring = "";
     private List<String> booleanParams = new ArrayList<>();
 
