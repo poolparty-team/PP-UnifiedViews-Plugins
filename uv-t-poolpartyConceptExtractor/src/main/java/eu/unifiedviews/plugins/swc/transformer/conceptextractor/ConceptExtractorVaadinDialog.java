@@ -172,7 +172,7 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
                 } catch (Exception e) {
                     throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.numberOf"));
                 }
-                if (number < 1) {
+                if (number < 0) {
                     throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.numberOf"));
                 }
             }
@@ -192,7 +192,7 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
                 } catch (Exception e) {
                     throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.numberOf"));
                 }
-                if (number < 1) {
+                if (number < 0) {
                     throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.numberOf"));
                 }
             }
