@@ -141,6 +141,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         failedExtractionReasonStatements = new HashSet<>();
         failedExtractionFiles = new HashMap<>();
 
+        // when concept extraction target is string literals of RDF statements
         if (fileInput == null && rdfInput != null) {
             final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, rdfInput, RDFDataUnit.Entry.class);
             for (RDFDataUnit.Entry entry : entries) {
@@ -152,7 +153,10 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                 executeConceptExtraction(serviceUrl, httpWrapper);
                 ContextUtils.sendShortInfo(ctx, "Finish extraction");
             }
-        } else {
+        }
+        // when concept extraction target is files
+        else {
+            // prepare mapping when URIs for files are provided
             if (rdfInput != null) {
                 final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, rdfInput, RDFDataUnit.Entry.class);
                 if (entries.size() > 1) {
@@ -172,6 +176,8 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
 
         int retriedTimes = 0;
         int numberOfFailedExtractions = 0;
+        // retry failed extractions when retry times is less than its limit, failed extraction exists, and any failed
+        // extraction becomes successful during previous retry
         while (retriedTimes < config.getMaxRetry() && !failedExtractionResourceStatements.isEmpty()
                 && failedExtractionResourceStatements.size() != numberOfFailedExtractions) {
             numberOfFailedExtractions = failedExtractionResourceStatements.size();
@@ -280,6 +286,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
             int blockSize = fileSize/10 > 0 ? fileSize/10 : 1;
             int reportIndex = blockSize;
             int index = 0;
+            // use URIs for files provided from the file name to URI mappings
             if (filenameUriMappings != null && !filenameUriMappings.isEmpty()) {
                 for (FilesDataUnit.Entry entry : fileEntries) {
                     if (ctx.canceled()) {
@@ -302,7 +309,9 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                         LOG.warn("Unable to read the file from files data unit entry", e);
                     }
                 }
-            } else {
+            }
+            // create URIs for files based on file names
+            else {
                 for (FilesDataUnit.Entry entry : fileEntries) {
                     if (ctx.canceled()) {
                         throw ContextUtils.dpuExceptionCancelled(ctx);
