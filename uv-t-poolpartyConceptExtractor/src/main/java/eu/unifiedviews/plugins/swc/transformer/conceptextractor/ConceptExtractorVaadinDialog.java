@@ -1,6 +1,8 @@
 package eu.unifiedviews.plugins.swc.transformer.conceptextractor;
 
 import com.vaadin.data.Validator;
+import com.vaadin.data.util.converter.StringToIntegerConverter;
+import com.vaadin.data.validator.IntegerRangeValidator;
 import com.vaadin.data.validator.StringLengthValidator;
 import com.vaadin.ui.*;
 
@@ -28,6 +30,7 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
     private TextField numberOfTerms;
     private TextField corpusScoring;
     private OptionGroup booleanOptions;
+    private TextField maxRetry;
 
     public ConceptExtractorVaadinDialog() {
         super(ConceptExtractor.class);
@@ -48,6 +51,7 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
         for (String param : c.getBooleanParams()) {
             booleanOptions.select(param);
         }
+        maxRetry.setValue(String.valueOf(c.getMaxRetry()));
     }
 
     @Override
@@ -76,6 +80,9 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
         if (!numberOfConcepts.isValid() || !numberOfTerms.isValid()) {
             throw new DPUConfigException(ctx.tr("ConceptExtractor.dialog.error.numberOf"));
         }
+        if (!maxRetry.isValid()) {
+            throw new DPUConfigException(ctx.tr("ConceptExtractor.dialog.error.maxRetry"));
+        }
 
         final ConceptExtractorConfig_V1 c = new ConceptExtractorConfig_V1();
         c.setHost(host.getValue());
@@ -94,12 +101,13 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
             booleanParams.add(id.toString());
         }
         c.setBooleanParams(booleanParams);
+        c.setMaxRetry(Integer.parseInt(maxRetry.getValue()));
         return c;
     }
 
     @Override
     public void buildDialogLayout() {
-        final GridLayout mainLayout = new GridLayout(2, 7);
+        final GridLayout mainLayout = new GridLayout(2, 8);
         mainLayout.setMargin(true);
         mainLayout.setSpacing(true);
         mainLayout.setDefaultComponentAlignment(Alignment.MIDDLE_LEFT);
@@ -114,20 +122,8 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
         port = new TextField(ctx.tr("ConceptExtractor.dialog.port"));
         port.setWidth("200px");
         port.setRequired(true);
-        port.addValidator(new Validator() {
-            @Override
-            public void validate(Object o) throws InvalidValueException {
-                int port = -1;
-                try {
-                    port = Integer.parseInt(o.toString());
-                } catch (Exception e) {
-                    throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.port"));
-                }
-                if (port < 0 || port > 65535) {
-                    throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.port"));
-                }
-            }
-        });
+        port.setConverter(new StringToIntegerConverter());
+        port.addValidator(new IntegerRangeValidator(ctx.tr("ConceptExtractor.dialog.error.port"), 0, 65535));
         mainLayout.addComponent(port, 1, 0, 1, 0);
 
         extractorApi = new TextField(ctx.tr("ConceptExtractor.dialog.extractorApi"));
@@ -162,41 +158,15 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
         numberOfTerms = new TextField(ctx.tr("ConceptExtractor.dialog.numberOfTerms"));
         numberOfTerms.setWidth("200px");
         numberOfTerms.setRequired(false);
-        numberOfTerms.addValidator(new Validator() {
-            @Override
-            public void validate(Object o) throws InvalidValueException {
-                if (o.equals("")) return;
-                int number = 0;
-                try {
-                    number = Integer.parseInt(o.toString());
-                } catch (Exception e) {
-                    throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.numberOf"));
-                }
-                if (number < 0) {
-                    throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.numberOf"));
-                }
-            }
-        });
+        numberOfTerms.setConverter(Integer.class);
+        numberOfTerms.addValidator(new IntegerRangeValidator(ctx.tr("ConceptExtractor.dialog.error.numberOf"), 0, null));
         mainLayout.addComponent(numberOfTerms, 0, 4, 0, 4);
 
         numberOfConcepts = new TextField(ctx.tr("ConceptExtractor.dialog.numberOfConcepts"));
         numberOfConcepts.setWidth("200px");
         numberOfConcepts.setRequired(false);
-        numberOfConcepts.addValidator(new Validator() {
-            @Override
-            public void validate(Object o) throws InvalidValueException {
-                if (o.equals("")) return;
-                int number = 0;
-                try {
-                    number = Integer.parseInt(o.toString());
-                } catch (Exception e) {
-                    throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.numberOf"));
-                }
-                if (number < 0) {
-                    throw new InvalidValueException(ctx.tr("ConceptExtractor.dialog.error.numberOf"));
-                }
-            }
-        });
+        numberOfConcepts.setConverter(new StringToIntegerConverter());
+        numberOfConcepts.addValidator(new IntegerRangeValidator(ctx.tr("ConceptExtractor.dialog.error.numberOf"), 0, null));
         mainLayout.addComponent(numberOfConcepts, 0, 5, 0, 5);
 
         corpusScoring = new TextField(ctx.tr("ConceptExtractor.dialog.corpusScoring"));
@@ -204,10 +174,17 @@ public class ConceptExtractorVaadinDialog extends AbstractDialog<ConceptExtracto
         corpusScoring.setRequired(false);
         mainLayout.addComponent(corpusScoring, 0, 6, 0, 6);
 
+        maxRetry = new TextField(ctx.tr("ConceptExtractor.dialog.maxRetry"));
+        maxRetry.setWidth("200px");
+        maxRetry.setRequired(true);
+        maxRetry.setConverter(new StringToIntegerConverter());
+        maxRetry.addValidator(new IntegerRangeValidator(ctx.tr("ConceptExtractor.dialog.error.maxRetry"), 0, null));
+        mainLayout.addComponent(maxRetry, 0, 7, 0, 7);
+
         booleanOptions = new OptionGroup(ctx.tr("ConceptExtractor.dialog.booleanOptions"));
         booleanOptions.setMultiSelect(true);
         booleanOptions.addItems("useTransitiveBroaderConcepts", "useTransitiveBroaderTopConcepts", "useRelatedConcepts", "filterNestedConcepts", "tfidfScoring", "useTypes");;
-        mainLayout.addComponent(booleanOptions, 1, 3, 1, 6);
+        mainLayout.addComponent(booleanOptions, 1, 3, 1, 7);
 
         setCompositionRoot(mainLayout);
     }
