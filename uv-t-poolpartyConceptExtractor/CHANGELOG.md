@@ -14,7 +14,15 @@ v2.0.0
 
 v2.1.0
 ---
-* Fixed bug in single extraction error.
+* Fix bug in single extraction error.
 * Subject, predicate and the first 200 characters of the object are logged in case of an unsuccessful extraction for the RDF input.
 * Execution progress report is moved to event level logs for higher significance.
 * Extraction model is checked and synchronized before extraction.
+
+v2.2.0
+---
+* Add a new output channel to export failed extractions in RDF
+* Add retry process for failed extractions
+* Fix bug in empty file input.
+* Allow extraction result limit for concepts or terms to be zero
+* Replace all integer validators with Vaddin built-in validators
