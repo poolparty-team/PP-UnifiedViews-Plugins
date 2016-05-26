@@ -1,11 +1,9 @@
 package eu.unifiedviews.plugins.swc.transformer.conceptextractor;
 
 import cz.cuni.mff.xrg.odcs.dpu.test.TestEnvironment;
-import eu.unifiedviews.dataunit.files.WritableFilesDataUnit;
 import eu.unifiedviews.dataunit.rdf.WritableRDFDataUnit;
 import eu.unifiedviews.helpers.dataunit.rdf.RDFHelper;
 import eu.unifiedviews.helpers.dpu.test.config.ConfigurationBuilder;
-import org.apache.commons.io.IOUtils;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -17,23 +15,20 @@ import org.openrdf.rio.RDFFormat;
 import org.openrdf.rio.turtle.TurtleWriter;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
 /**
- * Created by yyz on 26/11/15.
+ * Created by yyz on 15/10/15.
  */
-public class FileWithoutUriExtractionTest {
+public class FailedExtractionRetryTest {
     private static ConceptExtractor extractor;
     private static TestEnvironment env;
     private static WritableRDFDataUnit output;
-    private static WritableRDFDataUnit failedExtractionOutput;
     private static WritableRDFDataUnit input;
-    private static WritableFilesDataUnit fileInput;
+    private static WritableRDFDataUnit failedExtractionOutput;
     private static RepositoryConnection connection;
     private static Properties properties;
     private static ConceptExtractorConfig_V1 config;
@@ -42,26 +37,25 @@ public class FileWithoutUriExtractionTest {
     public static void before() throws Exception {
         extractor = new ConceptExtractor();
         env = new TestEnvironment();
-
-        fileInput = env.createFilesInput("fileInput");
+        input = env.createRdfInput("rdfInput", false);
         output = env.createRdfOutput("rdfOutput", false);
         failedExtractionOutput = env.createRdfOutput("failedExtractionOutput", false);
 
-        File inputFile = new File(java.net.URI.create(fileInput.addNewFile("file1.txt")));
-        try (FileOutputStream fout = new FileOutputStream(inputFile)) {
-            IOUtils.copy(Thread.currentThread().getContextClassLoader().getResourceAsStream("file1.txt"), fout);
-        }
+        InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream("test.ttl");
 
-        inputFile = new File(java.net.URI.create(fileInput.addNewFile("file2.txt")));
-        try (FileOutputStream fout = new FileOutputStream(inputFile)) {
-            IOUtils.copy(Thread.currentThread().getContextClassLoader().getResourceAsStream("file2.txt"), fout);
-        }
+        connection = input.getConnection();
+        URI graph = input.addNewDataGraph("test");
+        connection.add(inputStream, "", RDFFormat.TURTLE, graph);
+        ByteArrayOutputStream inputBos = new ByteArrayOutputStream();
+        connection.export(new TurtleWriter(inputBos), graph);
+
+        Assert.assertTrue(connection.size(graph) > 0);
 
         properties = new Properties();
         properties.load(Thread.currentThread().getContextClassLoader().getResourceAsStream("target.properties"));
 
         config = new ConceptExtractorConfig_V1();
-        config.setHost(properties.getProperty("host"));
+        config.setHost("four.zero.four");
         config.setPort(properties.getProperty("port"));
         config.setExtractorApi(properties.getProperty("extractorApi"));
         config.setProjectId(properties.getProperty("projectId"));
@@ -95,8 +89,7 @@ public class FileWithoutUriExtractionTest {
         extractor.configure((new ConfigurationBuilder()).setDpuConfiguration(config).toString());
         env.run(extractor);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        connection = output.getConnection();
-        connection.export(new TurtleWriter(outputStream), RDFHelper.getGraphsURIArray(output));
+        connection.export(new TurtleWriter(outputStream), RDFHelper.getGraphsURIArray(failedExtractionOutput));
         Assert.assertTrue(outputStream.size() > 0);
         System.out.println(outputStream.toString());
     }

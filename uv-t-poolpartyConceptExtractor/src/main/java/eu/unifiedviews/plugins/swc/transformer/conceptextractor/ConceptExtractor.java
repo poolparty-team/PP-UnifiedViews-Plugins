@@ -37,7 +37,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import org.openrdf.model.*;
-import org.openrdf.model.impl.URIImpl;
+import org.openrdf.model.impl.*;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryResult;
 import org.openrdf.rio.RDFFormat;
@@ -62,11 +62,17 @@ import java.util.*;
 @DPU.AsTransformer
 public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
     private static final String PPX_NS = "http://schema.semantic-web.at/ppx/";
+    private static final URI PPX_RESPONSE_CODE = new URIImpl("http://schema.semantic-web.at/ppx/responseCode");
+    private static final URI PPX_MESSAGE = new URIImpl("http://schema.semantic-web.at/ppx/message");
+    private static final URI PPX_FILE_NAME = new URIImpl("http://schema.semantic-web.at/ppx/fileName");
     private static final Logger LOG = LoggerFactory.getLogger(ConceptExtractor.class);
 
     public Set<Statement> graphStatements = null;
-    public HashMap<String, String> filenameUriMappings = null;
+    public Map<String, String> filenameUriMappings = null;
     public URI graphUri = null;
+    public Set<Statement> failedExtractionResourceStatements = null;
+    public Set<Statement> failedExtractionReasonStatements = null;
+    public Map<String, File> failedExtractionFiles = null;
 		
     @ExtensionInitializer.Init
     public FaultTolerance faultTolerance;
@@ -80,8 +86,14 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
     @DataUnit.AsOutput(name = "rdfOutput")
     public WritableRDFDataUnit rdfOutput;
 
+    @DataUnit.AsOutput(name = "failedExtractionOutput", optional = true)
+    public WritableRDFDataUnit failedExtractionOutput;
+
     @ExtensionInitializer.Init(param = "rdfOutput")
     public WritableSimpleRdf rdfWrapper;
+
+    @ExtensionInitializer.Init(param = "failedExtractionOutput")
+    public WritableSimpleRdf failedExtractionWrapper;
 
 	public ConceptExtractor() {
 		super(ConceptExtractorVaadinDialog.class, ConfigHistory.noHistory(ConceptExtractorConfig_V1.class));
@@ -105,6 +117,14 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
             }
         });
         rdfWrapper.setOutput(outputEntry);
+        final RDFDataUnit.Entry failedExtractionEntry = faultTolerance.execute(new FaultTolerance.ActionReturn<RDFDataUnit.Entry>() {
+
+            @Override
+            public RDFDataUnit.Entry action() throws Exception {
+                return RdfDataUnitUtils.addGraph(failedExtractionOutput, DataUnitUtils.generateSymbolicName(this.getClass()));
+            }
+        });
+        failedExtractionWrapper.setOutput(failedExtractionEntry);
 
         ContextUtils.sendShortInfo(ctx, "Prepare for concept extraction");
         String serviceUrl = config.getExtractionServiceUrl();
@@ -113,6 +133,11 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         ContextUtils.sendShortInfo(ctx, "Check extraction model status");
         requestExtractionModelUpdateService(httpWrapper);
 
+        failedExtractionResourceStatements = new HashSet<>();
+        failedExtractionReasonStatements = new HashSet<>();
+        failedExtractionFiles = new HashMap<>();
+
+        // when concept extraction target is string literals of RDF statements
         if (fileInput == null && rdfInput != null) {
             final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, rdfInput, RDFDataUnit.Entry.class);
             for (RDFDataUnit.Entry entry : entries) {
@@ -124,7 +149,10 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                 executeConceptExtraction(serviceUrl, httpWrapper);
                 ContextUtils.sendShortInfo(ctx, "Finish extraction");
             }
-        } else {
+        }
+        // when concept extraction target is files
+        else {
+            // prepare mapping when URIs for files are provided
             if (rdfInput != null) {
                 final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, rdfInput, RDFDataUnit.Entry.class);
                 if (entries.size() > 1) {
@@ -142,8 +170,42 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
             ContextUtils.sendShortInfo(ctx, "Finish extraction");
         }
 
-        ContextUtils.sendShortInfo(ctx, "All extraction tasks accomplished");
+        int retriedTimes = 0;
+        int numberOfFailedExtractions = 0;
+        // retry failed extractions when retry times is less than its limit, failed extraction exists, and any failed
+        // extraction becomes successful during previous retry
+        while (retriedTimes < config.getMaxRetry() && !failedExtractionResourceStatements.isEmpty()
+                && failedExtractionResourceStatements.size() != numberOfFailedExtractions) {
+            numberOfFailedExtractions = failedExtractionResourceStatements.size();
+            retriedTimes++;
+            ContextUtils.sendShortInfo(ctx, "Retry failed extractions, Iteration " + retriedTimes);
+            retryFailedExtractions(serviceUrl, httpWrapper);
+        }
+
+        ContextUtils.sendShortInfo(ctx, "All extraction tasks accomplished, failed extractions: "
+                + numberOfFailedExtractions);
+
         rdfWrapper.flushBuffer();
+        failedExtractionWrapper.add(new ArrayList<>(failedExtractionResourceStatements));
+        failedExtractionWrapper.add(new ArrayList<>(failedExtractionReasonStatements));
+        failedExtractionWrapper.flushBuffer();
+    }
+
+    /**
+     * Retry failed extractions to tolerate network failures
+     * @param serviceUrl URL of concept extraction service
+     * @param httpWrapper wrapped HTTP state used for requests
+     */
+    private void retryFailedExtractions(String serviceUrl, HttpStateWrapper httpWrapper) throws DPUException {
+        failedExtractionReasonStatements.clear();
+        for (Statement s : failedExtractionResourceStatements) {
+            if (s.getPredicate().equals(PPX_FILE_NAME) && failedExtractionFiles.containsKey(s.getObject().stringValue())) {
+                extractSingleFile(failedExtractionFiles.get(s.getObject().stringValue()), s.getSubject().stringValue(),
+                        serviceUrl, httpWrapper);
+            } else {
+                extractSingleObject(s, serviceUrl, httpWrapper);
+            }
+        }
     }
 
     /**
@@ -214,12 +276,13 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                     ContextUtils.sendShortInfo(ctx, "Extracted " + index + " of " + graphSize + " texts");
                 }
             }
-        } else {
+        } else if (fileInput != null) {
             final List<FilesDataUnit.Entry> fileEntries = FaultToleranceUtils.getEntries(faultTolerance, fileInput, FilesDataUnit.Entry.class);
             int fileSize = fileEntries.size();
             int blockSize = fileSize/10 > 0 ? fileSize/10 : 1;
             int reportIndex = blockSize;
             int index = 0;
+            // use URIs for files provided from the file name to URI mappings
             if (filenameUriMappings != null && !filenameUriMappings.isEmpty()) {
                 for (FilesDataUnit.Entry entry : fileEntries) {
                     if (ctx.canceled()) {
@@ -242,7 +305,9 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                         LOG.warn("Unable to read the file from files data unit entry", e);
                     }
                 }
-            } else {
+            }
+            // create URIs for files based on file names
+            else {
                 for (FilesDataUnit.Entry entry : fileEntries) {
                     if (ctx.canceled()) {
                         throw ContextUtils.dpuExceptionCancelled(ctx);
@@ -261,6 +326,8 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                     }
                 }
             }
+        } else {
+            ContextUtils.sendShortInfo(ctx, "Nothing to do because no input data is found");
         }
     }
 
@@ -289,40 +356,23 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         c[0] = Character.toLowerCase(c[0]);
         String predicateLocalName = new String(c);
 
-        URI tagPredicate = new URIImpl(PPX_NS + predicateLocalName +"/"+ "IsTaggedBy");
+        URI tagPredicate = new URIImpl(PPX_NS + predicateLocalName + "IsTaggedBy");
         URI taggedResource = new URIImpl(PPX_NS + predicateLocalName + "/"
                 + UUID.randomUUID().toString());
         builder.addTextBody("text", text);
         builder.addTextBody("documentUri", taggedResource.toString());
 
-        String rdf = requestExtractionService(serviceUrl, httpWrapper, builder, null);
-        if (rdf == null) {
-            if (text.length() > 200) {
-                text = text.substring(0, 200);
-            }
-            LOG.warn("Extraction for string literal \"" + text + "...\" of subject <" + subject.stringValue() + "> and predicate <" + predicate.stringValue() + "> failed");
-            return;
+        ExtractionResultWrapper extraction = requestExtractionService(serviceUrl, httpWrapper, builder, null);
+        if (extraction.rdf == null) {
+            failedExtractionResourceStatements.add(new StatementImpl(subject, predicate, new LiteralImpl(text)));
+            failedExtractionReasonStatements.add(new StatementImpl(subject, tagPredicate, taggedResource));
+            failedExtractionReasonStatements.add(new StatementImpl(taggedResource, PPX_RESPONSE_CODE, new NumericLiteralImpl(extraction.responseCode)));
+            failedExtractionReasonStatements.add(new StatementImpl(taggedResource, PPX_MESSAGE, new LiteralImpl(extraction.responseMessage)));
+        } else {
+            failedExtractionResourceStatements.remove(new StatementImpl(subject, predicate, new LiteralImpl(text)));
+            rdfWrapper.add(extraction.rdf);
+            rdfWrapper.add(subject, tagPredicate, taggedResource);
         }
-        List<Statement> rdfExtractionResult = new ArrayList<>();
-        RDFParser rdfParser = Rio.createParser(RDFFormat.RDFXML);
-        rdfParser.setRDFHandler(new StatementCollector(rdfExtractionResult));
-        try {
-            rdfParser.parse(new StringReader(rdf), PPX_NS);
-        } catch (Exception e) {
-            try {
-                rdfParser.parse(new StringReader(requestExtractionService(serviceUrl, httpWrapper, builder, null)), PPX_NS);
-            } catch (Exception e2) {
-                if (text.length() > 200) {
-                    text = text.substring(0, 200);
-                }
-                LOG.warn("Extraction for string literal \"" + text + "...\" of subject <" + subject.stringValue() + "> and predicate <" + predicate.stringValue() + "> failed");
-                LOG.warn(e.getMessage());
-                return;
-            }
-        }
-
-        rdfWrapper.add(rdfExtractionResult);
-        rdfWrapper.add(subject, tagPredicate, taggedResource);
     }
 
     /**
@@ -338,27 +388,18 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         MultipartEntityBuilder builder = createMultipartEntityBuilder();
         builder.addTextBody("documentUri", uri);
 
-        String rdf = requestExtractionService(serviceUrl, httpWrapper, builder, file);
-        if (rdf == null) {
-            LOG.warn("Extraction for file \"" + file.getName() + "\" failed");
-            return;
+        ExtractionResultWrapper extraction = requestExtractionService(serviceUrl, httpWrapper, builder, file);
+        URI fileUri = new URIImpl(uri);
+        if (extraction.rdf == null) {
+            failedExtractionResourceStatements.add(new StatementImpl(fileUri, PPX_FILE_NAME, new LiteralImpl(file.getPath())));
+            failedExtractionFiles.put(file.getPath(), file);
+            failedExtractionReasonStatements.add(new StatementImpl(fileUri, PPX_RESPONSE_CODE, new NumericLiteralImpl(extraction.responseCode)));
+            failedExtractionReasonStatements.add(new StatementImpl(fileUri, PPX_MESSAGE, new LiteralImpl(extraction.responseMessage)));
+        } else {
+            failedExtractionResourceStatements.remove(new StatementImpl(fileUri, PPX_FILE_NAME, new LiteralImpl(file.getPath())));
+            failedExtractionFiles.remove(file.getPath());
+            rdfWrapper.add(extraction.rdf);
         }
-        List<Statement> rdfExtractionResult = new ArrayList<>();
-        RDFParser rdfParser = Rio.createParser(RDFFormat.RDFXML);
-        rdfParser.setRDFHandler(new StatementCollector(rdfExtractionResult));
-        try {
-            rdfParser.parse(new StringReader(rdf), PPX_NS);
-        } catch (Exception e) {
-            try {
-                rdfParser.parse(new StringReader(requestExtractionService(serviceUrl, httpWrapper, builder, file)), PPX_NS);
-            } catch (Exception e2) {
-                LOG.warn("Extraction for file \"" + file.getName() + "\" failed");
-                LOG.warn(e.getMessage());
-                return;
-            }
-        }
-
-        rdfWrapper.add(rdfExtractionResult);
     }
 
     /**
@@ -369,12 +410,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
      * @return extraction result as an RDF/XML document deserialized to string
      * @throws DPUException
      */
-    private String requestExtractionService(String serviceUrl,
-                                            HttpStateWrapper wrapper,
-                                            MultipartEntityBuilder builder,
-                                            File file) throws DPUException
-    {
-        String triples = null;
+    private ExtractionResultWrapper requestExtractionService(String serviceUrl, HttpStateWrapper wrapper, MultipartEntityBuilder builder, File file) throws DPUException {
         try {
             HttpPost httpPost = new HttpPost(serviceUrl);
             builder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
@@ -385,16 +421,28 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
             CloseableHttpResponse response = wrapper.client.execute(wrapper.host, httpPost, wrapper.context);
 
             int status = response.getStatusLine().getStatusCode();
-            if (status == HttpStatus.SC_OK) {
-                triples = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
-            }
+            String responseBody = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
             response.close();
+
+            if (status == HttpStatus.SC_OK) {
+                List<Statement> rdfExtractionResult = new ArrayList<>();
+                RDFParser rdfParser = Rio.createParser(RDFFormat.RDFXML);
+                rdfParser.setRDFHandler(new StatementCollector(rdfExtractionResult));
+                try {
+                    rdfParser.parse(new StringReader(responseBody), PPX_NS);
+                    return new ExtractionResultWrapper(rdfExtractionResult, status, "");
+                } catch (Exception e) {
+                    LOG.warn("Encountered an exception when requesting parsing extraction result to RDF", e);
+                    return new ExtractionResultWrapper(null, HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage());
+                }
+            } else {
+                return new ExtractionResultWrapper(null, status, responseBody);
+            }
+
         } catch (Exception e) {
             LOG.warn("Encountered an exception when requesting remote concept extraction service", e);
-            return null;
+            return new ExtractionResultWrapper(null, HttpStatus.SC_INTERNAL_SERVER_ERROR, e.getMessage());
         }
-        LOG.trace("Extraction service response body: " +triples);
-        return triples;
     }
 
     /**
@@ -492,5 +540,19 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         return entityBuilder;
     }
 
+    /**
+     * A class to wrap HTTP response of concept extraction request
+     */
+    private class ExtractionResultWrapper {
+        private List<Statement> rdf;
+        private int responseCode;
+        private String responseMessage;
+
+        public ExtractionResultWrapper(List<Statement> rdf, int responseCode, String responseMessage) {
+            this.rdf = rdf;
+            this.responseCode = responseCode;
+            this.responseMessage = responseMessage;
+        }
+    }
 
 }

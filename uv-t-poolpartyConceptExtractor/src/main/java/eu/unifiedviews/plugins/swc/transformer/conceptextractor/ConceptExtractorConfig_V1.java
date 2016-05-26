@@ -19,9 +19,10 @@ public class ConceptExtractorConfig_V1 {
     private String extractionModelApi = "/PoolParty/api/indexbuilder";
     private String username = "";
     private String password = "";
-    private String numberOfConcepts = "";
-    private String numberOfTerms = "";
+    private String numberOfConcepts = "50";
+    private String numberOfTerms = "0";
     private String corpusScoring = "";
+    private int maxRetry = 3;
     private List<String> booleanParams = new ArrayList<>();
 
     public ConceptExtractorConfig_V1() {
@@ -118,6 +119,14 @@ public class ConceptExtractorConfig_V1 {
 
     public String getExtractionServiceUrl() {
         return "http://" + host + ":" + port + extractorApi;
+    }
+
+    public int getMaxRetry() {
+        return maxRetry;
+    }
+
+    public void setMaxRetry(int maxRetry) {
+        this.maxRetry = maxRetry;
     }
 
     public String getExtractionModelServiceUrl() {

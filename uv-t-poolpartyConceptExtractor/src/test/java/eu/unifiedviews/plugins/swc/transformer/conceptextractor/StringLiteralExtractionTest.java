@@ -28,6 +28,7 @@ public class StringLiteralExtractionTest {
     private static TestEnvironment env;
     private static WritableRDFDataUnit output;
     private static WritableRDFDataUnit input;
+    private static WritableRDFDataUnit failedExtractionOutput;
     private static RepositoryConnection connection;
     private static Properties properties;
     private static ConceptExtractorConfig_V1 config;
@@ -38,6 +39,7 @@ public class StringLiteralExtractionTest {
         env = new TestEnvironment();
         input = env.createRdfInput("rdfInput", false);
         output = env.createRdfOutput("rdfOutput", false);
+        failedExtractionOutput = env.createRdfOutput("failedExtractionOutput", false);
 
         InputStream inputStream = Thread.currentThread().getContextClassLoader().getResourceAsStream("test.ttl");
 
@@ -88,6 +90,7 @@ public class StringLiteralExtractionTest {
         env.run(extractor);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         connection.export(new TurtleWriter(outputStream), RDFHelper.getGraphsURIArray(output));
+        connection.export(new TurtleWriter(outputStream), RDFHelper.getGraphsURIArray(failedExtractionOutput));
         Assert.assertTrue(outputStream.size() > 0);
         System.out.println(outputStream.toString());
     }

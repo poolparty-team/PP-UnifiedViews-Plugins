@@ -19,14 +19,15 @@ Please refer to the following documentation for more information about PoolParty
 |**Username** | Account name of a user for the target PoolParty thesaurus server | test |
 |**Password** | Password of a user for the target PoolParty thesaurus server | **** |
 |**Corpus ID** | Identifier of a corpus in the project used to adapt scores with corpus analysis | 1C41C4B1-7654-2546-A341-14A2DB543D542 |
-|**Number of terms to return** | Maximum number of terms to return | 25 |
-|**Number of concepts to return** | Maximum number of concepts to return | 25 |
+|**Number of terms to return** | Maximum number of terms to return | 0 |
+|**Number of concepts to return** | Maximum number of concepts to return | 50 |
 |**useTransitiveBroaderConcepts** | Retrieve transitive broader concepts of the extracted concepts | false |
 |**useTransitiveBroaderTopConcepts** | Retrieve transitive broader top concepts of the extracted concepts | false |
 |**useRelatedConcepts** | Retrieve related concepts of the extracted concepts | false |
 |**filterNestedConcepts** | Nested concept filter removes concepts matches which are contained within other matches | true |
 |**tfidfScoring** | The scores of the concepts and terms are weighted by tfidf (term frequency-inverse document frequency) formula | false |
 |**useTypes** | Retrieve the custom types for concepts | false |
+|**Maximum retry times for failed extraction** | Maximum retry times for failed extraction | 3 |
 
 ### Inputs and outputs
 
@@ -34,7 +35,8 @@ Please refer to the following documentation for more information about PoolParty
 |:--------|:------:|:------:|:-------------|:---------------------:|
 |rdfInput|i|RDFDataUnit|RDF input where the object of each triple must be a string literal representing the text to be annotated| |
 |fileInput|i|FilesDataUnit|Files input where a list of files containing the texts to be annotated| |
-|rdfOutput|o|RDFDataUnit|RDF output where a graph of annotated concepts and terms is created for each triple from the input|x|
+|rdfOutput|o|RDFDataUnit|RDF output where a graph of annotated concepts and terms is created for triples and files from the input|x|
+|failedExtractionOutput|o|RDFDataUnit|RDF output where a graph of failed extractions is created for triples and files from the input| |
 
 If input data are files, then one single graph of RDF triples with subjects representing resource URIs and objects representing filenames in string literals should also be provided as input data to link annotations to the resource URI of files. Otherwise, the URIs will be created automatically with filenames as local names.
 
