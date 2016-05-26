@@ -72,10 +72,10 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
     private static final Logger LOG = LoggerFactory.getLogger(ConceptExtractor.class);
 
     public Set<Statement> graphStatements = null;
-    public HashMap<String, String> filenameUriMappings = null;
+    public Map<String, String> filenameUriMappings = null;
     public URI graphUri = null;
-    public List<Statement> failedExtractionResourceStatements = null;
-    public List<Statement> failedExtractionReasonStatements = null;
+    public Set<Statement> failedExtractionResourceStatements = null;
+    public Set<Statement> failedExtractionReasonStatements = null;
     public Map<String, File> failedExtractionFiles = null;
 		
     @ExtensionInitializer.Init
@@ -137,8 +137,8 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         ContextUtils.sendShortInfo(ctx, "Check extraction model status");
         requestExtractionModelUpdateService(httpWrapper);
 
-        failedExtractionResourceStatements = new ArrayList<>();
-        failedExtractionReasonStatements = new ArrayList<>();
+        failedExtractionResourceStatements = new HashSet<>();
+        failedExtractionReasonStatements = new HashSet<>();
         failedExtractionFiles = new HashMap<>();
 
         if (fileInput == null && rdfInput != null) {
@@ -170,11 +170,40 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
             ContextUtils.sendShortInfo(ctx, "Finish extraction");
         }
 
-        ContextUtils.sendShortInfo(ctx, "All extraction tasks accomplished");
+        int retriedTimes = 0;
+        int numberOfFailedExtractions = 0;
+        while (retriedTimes < config.getMaxRetry() && !failedExtractionResourceStatements.isEmpty()
+                && failedExtractionResourceStatements.size() != numberOfFailedExtractions) {
+            numberOfFailedExtractions = failedExtractionResourceStatements.size();
+            retriedTimes++;
+            ContextUtils.sendShortInfo(ctx, "Retry failed extractions, Iteration " + retriedTimes);
+            retryFailedExtractions(serviceUrl, httpWrapper);
+        }
+
+        ContextUtils.sendShortInfo(ctx, "All extraction tasks accomplished, failed extractions: "
+                + numberOfFailedExtractions);
+
         rdfWrapper.flushBuffer();
-        failedExtractionWrapper.add(failedExtractionResourceStatements);
-        failedExtractionWrapper.add(failedExtractionReasonStatements);
+        failedExtractionWrapper.add(new ArrayList<>(failedExtractionResourceStatements));
+        failedExtractionWrapper.add(new ArrayList<>(failedExtractionReasonStatements));
         failedExtractionWrapper.flushBuffer();
+    }
+
+    /**
+     * Retry failed extractions to tolerate network failures
+     * @param serviceUrl URL of concept extraction service
+     * @param httpWrapper wrapped HTTP state used for requests
+     */
+    private void retryFailedExtractions(String serviceUrl, HttpStateWrapper httpWrapper) throws DPUException {
+        failedExtractionReasonStatements.clear();
+        for (Statement s : failedExtractionResourceStatements) {
+            if (s.getPredicate().equals(PPX_FILE_NAME) && failedExtractionFiles.containsKey(s.getObject().stringValue())) {
+                extractSingleFile(failedExtractionFiles.get(s.getObject().stringValue()), s.getSubject().stringValue(),
+                        serviceUrl, httpWrapper);
+            } else {
+                extractSingleObject(s, serviceUrl, httpWrapper);
+            }
+        }
     }
 
     /**
@@ -331,10 +360,12 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
 
         ExtractionResultWrapper extraction = requestExtractionService(serviceUrl, httpWrapper, builder, null);
         if (extraction.rdf == null) {
-            failedExtractionResourceStatements.add(new StatementImpl(subject, tagPredicate, taggedResource));
+            failedExtractionResourceStatements.add(new StatementImpl(subject, predicate, new LiteralImpl(text)));
+            failedExtractionReasonStatements.add(new StatementImpl(subject, tagPredicate, taggedResource));
             failedExtractionReasonStatements.add(new StatementImpl(taggedResource, PPX_RESPONSE_CODE, new NumericLiteralImpl(extraction.responseCode)));
             failedExtractionReasonStatements.add(new StatementImpl(taggedResource, PPX_MESSAGE, new LiteralImpl(extraction.responseMessage)));
         } else {
+            failedExtractionResourceStatements.remove(new StatementImpl(subject, predicate, new LiteralImpl(text)));
             rdfWrapper.add(extraction.rdf);
             rdfWrapper.add(subject, tagPredicate, taggedResource);
         }
@@ -354,13 +385,15 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         builder.addTextBody("documentUri", uri);
 
         ExtractionResultWrapper extraction = requestExtractionService(serviceUrl, httpWrapper, builder, file);
+        URI fileUri = new URIImpl(uri);
         if (extraction.rdf == null) {
-            URI fileUri = new URIImpl(uri);
             failedExtractionResourceStatements.add(new StatementImpl(fileUri, PPX_FILE_NAME, new LiteralImpl(file.getPath())));
             failedExtractionFiles.put(file.getPath(), file);
             failedExtractionReasonStatements.add(new StatementImpl(fileUri, PPX_RESPONSE_CODE, new NumericLiteralImpl(extraction.responseCode)));
             failedExtractionReasonStatements.add(new StatementImpl(fileUri, PPX_MESSAGE, new LiteralImpl(extraction.responseMessage)));
         } else {
+            failedExtractionResourceStatements.remove(new StatementImpl(fileUri, PPX_FILE_NAME, new LiteralImpl(file.getPath())));
+            failedExtractionFiles.remove(file.getPath());
             rdfWrapper.add(extraction.rdf);
         }
     }
