@@ -2,13 +2,16 @@ package eu.unifiedviews.swc;
 
 import biz.poolparty.aligned.unifiedgovernance.UnifiedGovernance;
 import eu.unifiedviews.dataunit.DataUnit;
+import eu.unifiedviews.dataunit.DataUnitException;
 import eu.unifiedviews.dataunit.rdf.WritableRDFDataUnit;
 import eu.unifiedviews.dpu.DPU;
 import eu.unifiedviews.dpu.DPUException;
 import eu.unifiedviews.helpers.dpu.config.ConfigHistory;
 import eu.unifiedviews.helpers.dpu.context.ContextUtils;
 import eu.unifiedviews.helpers.dpu.exec.AbstractDpu;
+import java.util.logging.Level;
 import org.openrdf.model.Statement;
+import org.openrdf.model.URI;
 import org.openrdf.repository.RepositoryConnection;
 import org.openrdf.repository.RepositoryException;
 import org.openrdf.rio.RDFFormat;
@@ -25,25 +28,31 @@ public class ConfluenceJiraExtractor extends AbstractDpu<ConfluenceJiraExtractor
     @DataUnit.AsOutput(name = "output")
     public WritableRDFDataUnit out;
 
-	public ConfluenceJiraExtractor() {
-		super(ConfluenceJiraExtractorDialog.class, ConfigHistory.noHistory(ConfluenceJiraExtractorConfig.class));
-	}
-		
+    public ConfluenceJiraExtractor() {
+        super(ConfluenceJiraExtractorDialog.class, ConfigHistory.noHistory(ConfluenceJiraExtractorConfig.class));
+    }
+
     @Override
     protected void innerExecute() throws DPUException {
         ContextUtils.sendShortInfo(ctx, "ConfluenceJira.message");
 
+        URI targetGraph = null;
         try {
-            ConnectionRdfWriter connectionRdfWriter =  new ConnectionRdfWriter(out.getConnection());
+            targetGraph = out.addNewDataGraph("http://unifiedviews.eu/jira/out");
+        } catch (DataUnitException ex) {
+            log.error("Cannot add data graph: {}", ex);
+        }
+
+        try {
+            ConnectionRdfWriter connectionRdfWriter = new ConnectionRdfWriter(out.getConnection(), targetGraph);
             UnifiedGovernance.extract(config.getConfluenceApiBaseUri(),
                     config.getJiraApiBaseUri(),
                     config.getJiraProjectKeys(),
                     config.getUsername(),
                     config.getPassword(),
                     connectionRdfWriter);
-            log.info("Extracted " +connectionRdfWriter.statementCount+ " statements");
-        }
-        catch (Exception e) {
+            log.info("Extracted " + connectionRdfWriter.statementCount + " statements");
+        } catch (Exception e) {
             log.error("Error extracting data", e);
         }
     }
@@ -51,10 +60,14 @@ public class ConfluenceJiraExtractor extends AbstractDpu<ConfluenceJiraExtractor
     private class ConnectionRdfWriter extends RDFWriterBase {
 
         private RepositoryConnection repCon;
+
+        private URI targetGraph;
+
         private int statementCount = 0;
 
-        ConnectionRdfWriter(RepositoryConnection repCon) {
+        ConnectionRdfWriter(RepositoryConnection repCon, URI targetGraph) {
             this.repCon = repCon;
+            this.targetGraph = targetGraph;
         }
 
         @Override
@@ -73,10 +86,9 @@ public class ConfluenceJiraExtractor extends AbstractDpu<ConfluenceJiraExtractor
         @Override
         public void handleStatement(Statement statement) throws RDFHandlerException {
             try {
-                repCon.add(statement);
+                repCon.add(statement, targetGraph);
                 statementCount++;
-            }
-            catch (RepositoryException e) {
+            } catch (RepositoryException e) {
                 log.error("Error handling extracted statement", e);
             }
         }

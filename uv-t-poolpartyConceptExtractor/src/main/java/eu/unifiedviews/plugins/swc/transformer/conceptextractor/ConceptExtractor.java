@@ -10,21 +10,23 @@ import eu.unifiedviews.dpu.DPUException;
 import eu.unifiedviews.helpers.dataunit.DataUnitUtils;
 import eu.unifiedviews.helpers.dataunit.files.FilesHelper;
 import eu.unifiedviews.helpers.dataunit.rdf.RdfDataUnitUtils;
+import eu.unifiedviews.helpers.dpu.config.ConfigHistory;
+import eu.unifiedviews.helpers.dpu.context.ContextUtils;
+import eu.unifiedviews.helpers.dpu.exec.AbstractDpu;
+import eu.unifiedviews.helpers.dpu.extension.ExtensionInitializer;
+import eu.unifiedviews.helpers.dpu.extension.faulttolerance.FaultTolerance;
 import eu.unifiedviews.helpers.dpu.extension.faulttolerance.FaultToleranceUtils;
 import eu.unifiedviews.helpers.dpu.extension.rdf.simple.WritableSimpleRdf;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpStatus;
-import org.apache.http.NameValuePair;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.AuthCache;
 import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.protocol.HttpClientContext;
-import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.mime.HttpMultipartMode;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
@@ -33,7 +35,6 @@ import org.apache.http.impl.client.BasicAuthCache;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
-import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 import org.openrdf.model.*;
 import org.openrdf.model.impl.URIImpl;
@@ -43,11 +44,6 @@ import org.openrdf.rio.RDFFormat;
 import org.openrdf.rio.RDFParser;
 import org.openrdf.rio.Rio;
 import org.openrdf.rio.helpers.StatementCollector;
-import eu.unifiedviews.helpers.dpu.config.ConfigHistory;
-import eu.unifiedviews.helpers.dpu.context.ContextUtils;
-import eu.unifiedviews.helpers.dpu.exec.AbstractDpu;
-import eu.unifiedviews.helpers.dpu.extension.ExtensionInitializer;
-import eu.unifiedviews.helpers.dpu.extension.faulttolerance.FaultTolerance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -279,11 +275,10 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
                                      HttpStateWrapper httpWrapper) throws DPUException {
         MultipartEntityBuilder builder = createMultipartEntityBuilder();
         Value object = statement.getObject();
-        if (object instanceof Literal) {
-            if (!(((Literal) object).getDatatype().getLocalName().equals("string"))) {
-                return;
-            }
-        } else {
+
+        if (!(object instanceof Literal) ||
+            !((Literal) object).getDatatype().getLocalName().toLowerCase().contains("string"))
+        {
             return;
         }
         String text = object.stringValue();
@@ -294,7 +289,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
         c[0] = Character.toLowerCase(c[0]);
         String predicateLocalName = new String(c);
 
-        URI tagPredicate = new URIImpl(PPX_NS + predicateLocalName + "IsTaggedBy");
+        URI tagPredicate = new URIImpl(PPX_NS + predicateLocalName +"/"+ "IsTaggedBy");
         URI taggedResource = new URIImpl(PPX_NS + predicateLocalName + "/"
                 + UUID.randomUUID().toString());
         builder.addTextBody("text", text);
@@ -374,7 +369,11 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
      * @return extraction result as an RDF/XML document deserialized to string
      * @throws DPUException
      */
-    private String requestExtractionService(String serviceUrl, HttpStateWrapper wrapper, MultipartEntityBuilder builder, File file) throws DPUException {
+    private String requestExtractionService(String serviceUrl,
+                                            HttpStateWrapper wrapper,
+                                            MultipartEntityBuilder builder,
+                                            File file) throws DPUException
+    {
         String triples = null;
         try {
             HttpPost httpPost = new HttpPost(serviceUrl);
@@ -394,6 +393,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
             LOG.warn("Encountered an exception when requesting remote concept extraction service", e);
             return null;
         }
+        LOG.trace("Extraction service response body: " +triples);
         return triples;
     }
 
