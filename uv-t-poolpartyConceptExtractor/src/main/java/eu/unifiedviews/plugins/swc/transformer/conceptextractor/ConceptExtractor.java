@@ -198,7 +198,7 @@ public class ConceptExtractor extends AbstractDpu<ConceptExtractorConfig_V1> {
      */
     private void retryFailedExtractions(String serviceUrl, HttpStateWrapper httpWrapper) throws DPUException {
         failedExtractionReasonStatements.clear();
-        for (Statement s : failedExtractionResourceStatements) {
+        for (Statement s : new HashSet<>(failedExtractionResourceStatements)) {
             if (s.getPredicate().equals(PPX_FILE_NAME) && failedExtractionFiles.containsKey(s.getObject().stringValue())) {
                 extractSingleFile(failedExtractionFiles.get(s.getObject().stringValue()), s.getSubject().stringValue(),
                         serviceUrl, httpWrapper);
