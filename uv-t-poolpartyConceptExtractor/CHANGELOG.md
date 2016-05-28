@@ -26,3 +26,7 @@ v2.2.0
 * Fix bug in empty file input.
 * Allow extraction result limit for concepts or terms to be zero
 * Replace all integer validators with Vaddin built-in validators
+
+v2.2.1
+---
+* Fix concurrent set operation issue
