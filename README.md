@@ -4,7 +4,7 @@
 
 This repository publishes PoolParty plugins developed by the PoolParty Development Team to integrate PoolParty with UnifiedViews such that users are able consume its Web services in UnifiedViews.
 
-PoolPartyConceptExtractor is the only public plugin currently available, but more plugins will be coming soon. Please step into each module for plugin-specific information.
+Currently two plugins PoolPartyConceptExtractor and RDFHttpLoader are available. Please step into each module for plugin-specific information.
 
 ## Introduction to UnifiedViews
 
