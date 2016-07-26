@@ -7,7 +7,7 @@
 
     <groupId>eu.unifiedviews.plugins.swc.poolparty</groupId>
     <artifactId>uv-poolparty-plugins</artifactId>
-    <version>1.2.0</version>
+    <version>1.4.0</version>
     <packaging>pom</packaging>
     <description>PoolParty Plugins for UnifiedViews</description>
 
