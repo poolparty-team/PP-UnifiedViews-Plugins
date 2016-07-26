@@ -18,6 +18,7 @@ public class RdfHttpLoaderConfig_V1 {
     private String graphUri = "DEFAULT";
     private String inputType = "RDF";
     private String contentType = "Turtle";
+    private boolean overwritten = false;
 
     public String getHost() {
         return host;
@@ -113,5 +114,13 @@ public class RdfHttpLoaderConfig_V1 {
 
     public void setContentType(String contentType) {
         this.contentType = contentType;
+    }
+
+    public boolean isOverwritten() {
+        return overwritten;
+    }
+
+    public void setOverwritten(boolean overwritten) {
+        this.overwritten = overwritten;
     }
 }

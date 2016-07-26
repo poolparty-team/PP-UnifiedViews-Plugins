@@ -3,7 +3,6 @@ package eu.unifiedviews.plugins.swc.loader.rdfhttploader;
 import com.vaadin.data.Property;
 import com.vaadin.data.Validator;
 import com.vaadin.data.validator.RegexpValidator;
-import com.vaadin.data.validator.StringLengthValidator;
 import com.vaadin.ui.*;
 import eu.unifiedviews.dpu.config.DPUConfigException;
 import eu.unifiedviews.helpers.dpu.vaadin.dialog.AbstractDialog;
@@ -29,6 +28,7 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
     private CheckBox setGraph;
     private TextField graphUri;
     private NativeSelect contentType;
+    private CheckBox overwritten;
 
     public RdfHttpLoaderVaadinDialog() {
         super(RdfHttpLoader.class);
@@ -48,6 +48,7 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         setGraph.setValue(c.isSetGraph());
         graphUri.setValue(c.getGraphUri());
         contentType.setValue(c.getContentType());
+        overwritten.setValue(c.isOverwritten());
     }
 
     @Override
@@ -87,6 +88,7 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         c.setSetGraph(setGraph.getValue());
         c.setGraphUri(graphUri.getValue());
         c.setContentType(contentType.getValue().toString());
+        c.setOverwritten(overwritten.getValue());
         return c;
     }
 
@@ -181,6 +183,8 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
                     graphUri.setEnabled(false);
                     contentType.setEnabled(false);
                     contentType.setRequired(false);
+                    overwritten.setEnabled(false);
+                    overwritten.setValue(overwritten.getValue());
                 } else if (event.getProperty().getValue().equals("File")) {
                     update.setEnabled(false);
                     update.setRequired(false);
@@ -189,6 +193,8 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
                     graphUri.setEnabled(setGraph.getValue());
                     contentType.setEnabled(true);
                     contentType.setRequired(true);
+                    overwritten.setEnabled(true);
+                    overwritten.setValue(overwritten.getValue());
                 } else if (event.getProperty().getValue().equals("RDF")) {
                     update.setEnabled(false);
                     update.setRequired(false);
@@ -197,6 +203,8 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
                     graphUri.setEnabled(setGraph.getValue());
                     contentType.setEnabled(false);
                     contentType.setRequired(false);
+                    overwritten.setEnabled(false);
+                    overwritten.setValue(overwritten.getValue());
                 }
             }
         });
@@ -206,7 +214,12 @@ public class RdfHttpLoaderVaadinDialog extends AbstractDialog<RdfHttpLoaderConfi
         contentType.setEnabled(false);
         contentType.addItems("Turtle", "RDF/XML", "N-Triples", "N3", "JSON-LD", "BinaryRDF", "TriX", "TriG", "N-Quads");
         contentType.setRequired(false);
-        mainLayout.addComponent(contentType, 1, 2, 1, 3);
+        mainLayout.addComponent(contentType, 1, 2, 1, 2);
+
+        overwritten = new CheckBox(ctx.tr("RdfHttpLoader.dialog.overwritten"));
+        overwritten.setImmediate(true);
+        overwritten.setEnabled(false);
+        mainLayout.addComponent(overwritten, 1, 3, 1, 3);
 
         setGraph = new CheckBox(ctx.tr("RdfHttpLoader.dialog.setGraph"), false);
         setGraph.setImmediate(true);

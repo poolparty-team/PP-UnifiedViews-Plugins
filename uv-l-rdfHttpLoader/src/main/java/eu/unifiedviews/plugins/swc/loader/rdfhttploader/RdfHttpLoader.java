@@ -21,13 +21,16 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.AuthCache;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.protocol.HttpClientContext;
 import org.apache.http.client.utils.HttpClientUtils;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.FileEntity;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.entity.mime.Header;
 import org.apache.http.impl.auth.BasicScheme;
 import org.apache.http.impl.client.BasicAuthCache;
 import org.apache.http.impl.client.BasicCredentialsProvider;
@@ -60,8 +63,6 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
     private static final String GRAPH_TEMPLATE = "GRAPH <%s> { %s }";
     private static final int MAX_RETRY = 3;
 
-    public String subjects = "";
-    public Set<Statement> graphStatements = null;
     public URI internalGraphUri = null;
     StringWriter rdfStringWriter = new StringWriter();
     RDFWriter rdfWriter = Rio.createWriter(RDFFormat.NTRIPLES, rdfStringWriter);
@@ -86,9 +87,10 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
     @Override
     protected void innerExecute() throws DPUException {
         HttpStateWrapper httpWrapper = createHttpStateWithAuth();
-        ContextUtils.sendShortInfo(ctx, "Prepare for SPARQL update based on " + config.getInputType());
         String update = "";
-
+        /**
+         * When the input data is RDF objects, the triples are serialized into N-Triples and inserted into a SPARQL update query
+         */
         if (rdfInput != null && config.getInputType().equals("RDF")) {
             String targetGraphUri = config.getGraphUri();
             if (targetGraphUri.toLowerCase().equals("default")) {
@@ -127,6 +129,9 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
             }
         }
 
+        /**
+         * When the input data is files in serialized RDF formats, the files are directly posted to the SPARQL endpoint
+         */
         if (fileInput != null && config.getInputType().equals("File")) {
             String graphParam = null;
             if (config.isSetGraph()) {
@@ -171,37 +176,6 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
 
         if (config.getInputType().equals("SPARQL Update")) {
             ContextUtils.sendInfo(ctx, "Start executing update query", "Update:\n-------\n" + update);
-            /*
-            // Query customization with variables
-            LOG.info("start");
-            update = config.getUpdate();
-            LOG.info(update);
-            if (rdfInput != null && update.contains("##RDF##")) {
-                final List<RDFDataUnit.Entry> entries = FaultToleranceUtils.getEntries(faultTolerance, rdfInput, RDFDataUnit.Entry.class);
-                for (RDFDataUnit.Entry entry : entries) {
-                    internalGraphUri = FaultToleranceUtils.asGraph(faultTolerance, entry);
-                    faultTolerance.execute(rdfInput, new FaultTolerance.ConnectionAction() {
-                        @Override
-                        public void action(RepositoryConnection connection) throws Exception {
-                            RepositoryResult<Statement> repositoryResult = connection.getStatements(null, null, null, false, internalGraphUri);
-
-                            while (repositoryResult.hasNext()) {
-                                if (ctx.canceled()) {
-                                    throw ContextUtils.dpuExceptionCancelled(ctx);
-                                }
-                                subjects = subjects + "<" + repositoryResult.next().getSubject().stringValue() + ">" + ", ";
-                            }
-
-                        }
-                    });
-                }
-                if (!subjects.equals("")) {
-                    subjects = subjects.substring(0, subjects.length() - 2);
-                }
-                update = update.replaceAll("##RDF##", subjects);
-            }
-            LOG.info(update);
-            */
             int trial = 0;
             while (true) {
                 if (ctx.canceled()) {
@@ -264,22 +238,26 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
         } else {
             requestUrl = wrapper.host.toURI() + config.getSparqlEndpoint() + graphParam;
         }
-        HttpPost httpPost = new HttpPost(requestUrl);
-        /*
-        MultipartEntityBuilder entityBuilder = MultipartEntityBuilder.create();
-        entityBuilder.setMode(HttpMultipartMode.BROWSER_COMPATIBLE);
-        if (file != null) {
-            entityBuilder.addBinaryBody("file", file, ContentType.DEFAULT_BINARY, file.getName());
+        HttpEntityEnclosingRequestBase httpRequest;
+        if (config.isOverwritten() && config.getInputType().equals("File")) {
+            LOG.info("Issuing HTTP PUT request");
+            httpRequest = new HttpPut(requestUrl);
+        } else {
+            LOG.info("Issuing HTTP POST request");
+            httpRequest = new HttpPost(requestUrl);
         }
-        */
-        httpPost.setEntity(entity);
+        httpRequest.setEntity(entity);
         try {
-            response = wrapper.client.execute(wrapper.host, httpPost, wrapper.context);
+            if (config.isAuthentication()) {
+                response = wrapper.client.execute(wrapper.host, httpRequest, wrapper.context);
+            } else {
+                response = wrapper.client.execute(wrapper.host, httpRequest);
+            }
             status = response.getStatusLine().getStatusCode();
             if (response.getEntity() != null) {
                 message = EntityUtils.toString(response.getEntity());
-                if (message.length() > 1000) {
-                    message = message.substring(0, 1000) + "\n ...";
+                if (message.length() > 10000) {
+                    message = message.substring(0, 10000) + "\n ...";
                 }
             } else {
                 message = "No content";
@@ -318,6 +296,8 @@ public class RdfHttpLoader extends AbstractDpu<RdfHttpLoaderConfig_V1> {
                     new AuthScope(host.getHostName(), host.getPort()),
                     new UsernamePasswordCredentials(config.getUsername(), config.getPassword()));
             httpclient = HttpClients.custom().setDefaultCredentialsProvider(credsProvider).build();
+        } else {
+            httpclient = HttpClients.createDefault();
         }
 
         AuthCache authCache = new BasicAuthCache();
