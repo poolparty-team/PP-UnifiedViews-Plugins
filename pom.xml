@@ -13,6 +13,7 @@
 
     <modules>
         <module>uv-t-poolpartyConceptExtractor</module>
+        <module>uv-l-rdfHttpLoader</module>
     </modules>
 
     <properties>
