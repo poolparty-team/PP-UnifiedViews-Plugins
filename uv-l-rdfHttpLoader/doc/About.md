@@ -28,7 +28,7 @@ RDF HTTP Loader is a Data Processing Unit (DPU) or plugin for UnifiedViews to ex
 ### Input Data Type
 
 RDF HTTP Loader deals with three types of input data with tasks to be executed on the remote SPARQL endpoint:
-* RDF: used when RDF data comes from the *rdfInput* as *RDFDataUnit* represented in Java Objects. In this case the input data is serialized into N-Triples, inserted into a SPARQL Update query, and loaded to the target remote SPARQL endpoint by executing the SPARQL update query. This approach can be used for small datasets.
+* RDF: used when RDF data comes from the *rdfInput* as *RDFDataUnit* represented in Java Objects. In this case the input data is serialized into N-Triples, inserted into a SPARQL Update query, and loaded to the target remote SPARQL endpoint by executing the SPARQL update query. This approach can be used for small datasets if N-Triples serialization is less than 10 MB.
 * File: used when RDF data comes from the *fileInput* as *FilesDataUnit* represented in files based on any W3C standard RDF serialization format. In this case the input data is uploaded to the remote SPARQL endpoint as files in post body. In the meanwhile *RDF File Format* must be specified properly to set the appropriate content type header in the request. This approach is recommended for large datasets. Note that for some RDF databases (e.g., Virtuoso) the SPARQL endpoint for file uploading is different, please adjust the path of SPARQL endpoint accordingly.
 * SPARQL Update: used when input data is provided manually in the update query instead of the predecessor DPU or any graph update and management task should be executed on the remote SPARQL endpoint.
 Based on the selection of input data type, the corresponding input data source is used to retrieve data. An error will be thrown when the input data type and input data source do not match.
@@ -36,3 +36,7 @@ Based on the selection of input data type, the corresponding input data source i
 ### Graph URI
 
 URI of the target RDF graph on the remote SPARQL endpoint can be specify to describe the destination of the RDF data to be loaded into. The default graph is used if no graph URI is specified by the user. In the case that input data type is a SPARQL update query, this option is disabled because graph operations should be specified in the update query.
+
+### Overwrite
+
+When files are used as input to be loaded to the remote SPARQL endpoint, one can specify if the new data is inserted into the existing target graph directly or after clearing the target graph. This operation is defined in SPARQL Graph Store HTTP Protocol by using HTTP operation POST or PUT. For SPARQL endpoints not conforming to this protocol strictly, inserting data to a non-existing target graph with overwritten option by HTTP PUT may do nothing. 
