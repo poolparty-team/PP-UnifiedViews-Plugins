@@ -14,11 +14,6 @@ UnifiedViews is designed to be decoupled into the frontend part and the backend 
 
 By default UnifiedViews has already provided a wide range of data processing units commonly used in data integration such as extractor for relational databases and transformer from tabular data to RDF data. Moreover, it is a general purpose solution with high extensibility based on its modular architecture and standardized APIs, supporting developers to customize and create their own plugins or data processing units for the pipelines according to various use cases. Such customization potentials are the true power of UnifiedViews, enabling the capability to interact and coordinate any external process.
 
-For more information related to UnifiedViews, please refer to:
-
-[UnifiedViews Official Website](http://unifiedviews.eu/)
-[UnifiedViews Official Documentation](https://grips.semantic-web.at/display/UDDOC/Introduction)
-
 The source code of UnifiedViews is hosted by GitHub, including a wide range of plugins for data processing:
 
 [UnifiedViews GitHub Repository](https://github.com/UnifiedViews)
